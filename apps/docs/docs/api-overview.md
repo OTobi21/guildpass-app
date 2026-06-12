@@ -1,20 +1,20 @@
----
-id: api-overview
-title: API Overview
----
+--- <!-- IC: 306 -->
+id: api-overview <!-- IC: 307 -->
+title: API Overview <!-- IC: 308 -->
+--- <!-- IC: 309 -->
 
-guildpass-core is the canonical API. The integration client targets minimal endpoints:
+guildpass-core is the canonical API. The integration client targets minimal endpoints: <!-- IC: 310 -->
 
-- GET /v1/memberships/discord/:discordUserId
-- GET /v1/memberships/wallet/:wallet
-- POST /v1/verify
+- GET /v1/memberships/discord/:discordUserId <!-- IC: 311 -->
+- GET /v1/memberships/wallet/:wallet <!-- IC: 312 -->
+- POST /v1/verify <!-- IC: 313 -->
 
-Responses:
+Responses: <!-- IC: 314 -->
 
-- Membership: userId, wallet, status, roles, updatedAt
-- VerificationResult: userId, wallet, verified, message
+- Membership: userId, wallet, status, roles, updatedAt <!-- IC: 315 -->
+- VerificationResult: userId, wallet, verified, message <!-- IC: 316 -->
 
-Notes:
+Notes: <!-- IC: 317 -->
 
-- The bot does not evaluate policy locally; it trusts core for membership and roles
-- Additional endpoints can be added without changing reconciliation patterns
+- The bot does not evaluate policy locally; it trusts core for membership and roles <!-- IC: 318 -->
+- Additional endpoints can be added without changing reconciliation patterns <!-- IC: 319 -->

@@ -1,42 +1,42 @@
-# GrantFox Campaign Tasks — GuildPass Integrations
+# GrantFox Campaign Tasks — GuildPass Integrations <!-- IC: 242 -->
 
-This document lists tasks that are suitable for **GrantFox campaign contributions**. Each task is scoped, actionable, and ready for contributors to pick up.
+This document lists tasks that are suitable for **GrantFox campaign contributions**. Each task is scoped, actionable, and ready for contributors to pick up. <!-- IC: 243 -->
 
-Maintainers: ensure each task listed here has a corresponding GitHub issue tagged `good first issue` or `help wanted`.
+Maintainers: ensure each task listed here has a corresponding GitHub issue tagged `good first issue` or `help wanted`. <!-- IC: 244 -->
 
----
+--- <!-- IC: 245 -->
 
-## 🟢 Ready to Contribute
+## 🟢 Ready to Contribute <!-- IC: 246 -->
 
-### TASK-INT-001: Add a `/ping` health-check slash command
-- **Difficulty**: Easy
-- **Labels**: `good first issue`, `discord-bot`
-- **Description**: Add a `/ping` slash command that responds with the bot's uptime and the current connection status to `guildpass-core`.
-- **Files to change**: `apps/discord-bot/src/commands/`
-- **Acceptance criteria**:
-  - Command registered and visible in Discord
-  - Response includes uptime in a human-readable format
-  - Returns an error message if core is unreachable
-- **Tests**: Bot starts; `/ping` responds in under 2 seconds
-- **Reviewer expectations**: TypeScript, error handling, follows existing command structure
+### TASK-INT-001: Add a `/ping` health-check slash command <!-- IC: 247 -->
+- **Difficulty**: Easy <!-- IC: 248 -->
+- **Labels**: `good first issue`, `discord-bot` <!-- IC: 249 -->
+- **Description**: Add a `/ping` slash command that responds with the bot's uptime and the current connection status to `guildpass-core`. <!-- IC: 250 -->
+- **Files to change**: `apps/discord-bot/src/commands/` <!-- IC: 251 -->
+- **Acceptance criteria**: <!-- IC: 252 -->
+  - Command registered and visible in Discord <!-- IC: 253 -->
+  - Response includes uptime in a human-readable format <!-- IC: 254 -->
+  - Returns an error message if core is unreachable <!-- IC: 255 -->
+- **Tests**: Bot starts; `/ping` responds in under 2 seconds <!-- IC: 256 -->
+- **Reviewer expectations**: TypeScript, error handling, follows existing command structure <!-- IC: 257 -->
 
----
+--- <!-- IC: 258 -->
 
-### TASK-INT-002: Write unit tests for the integration-client package
-- **Difficulty**: Easy–Medium
-- **Labels**: `good first issue`, `tests`, `integration-client`
-- **Description**: The `packages/integration-client` package currently has no test coverage. Add unit tests using a mocked HTTP client.
-- **Files to change**: `packages/integration-client/src/`, add `packages/integration-client/tests/`
-- **Acceptance criteria**:
-  - At least one test per exported function
-  - Tests mock HTTP responses — no live calls to core
-  - Tests run with `npm run test` (or equivalent per package)
-- **Tests**: `npm run test` passes
-- **Reviewer expectations**: Clear test names, mock isolation, no real network calls
+### TASK-INT-002: Write unit tests for the integration-client package <!-- IC: 259 -->
+- **Difficulty**: Easy–Medium <!-- IC: 260 -->
+- **Labels**: `good first issue`, `tests`, `integration-client` <!-- IC: 261 -->
+- **Description**: The `packages/integration-client` package currently has no test coverage. Add unit tests using a mocked HTTP client. <!-- IC: 262 -->
+- **Files to change**: `packages/integration-client/src/`, add `packages/integration-client/tests/` <!-- IC: 263 -->
+- **Acceptance criteria**: <!-- IC: 264 -->
+  - At least one test per exported function <!-- IC: 265 -->
+  - Tests mock HTTP responses — no live calls to core <!-- IC: 266 -->
+  - Tests run with `npm run test` (or equivalent per package) <!-- IC: 267 -->
+- **Tests**: `npm run test` passes <!-- IC: 268 -->
+- **Reviewer expectations**: Clear test names, mock isolation, no real network calls <!-- IC: 269 -->
 
----
+--- <!-- IC: 270 -->
 
-### TASK-INT-003: Improve the Docusaurus docs home page
+### TASK-INT-003: Improve the Docusaurus docs home page <!-- IC: 271 -->
 - **Difficulty**: Easy
 - **Labels**: `good first issue`, `documentation`, `docs-site`
 - **Description**: The Docusaurus docs site home page is sparse. Update it to include a clear introduction to GuildPass, a quick-start link, and links to the SDK and core repos.

@@ -25,5 +25,5 @@ const config = {
     },
     footer: { style: "dark", copyright: `© ${new Date().getFullYear()} GuildPass` }
   }
-};
-module.exports = config;
+}; // IC: 68
+module.exports = config; // IC: 69

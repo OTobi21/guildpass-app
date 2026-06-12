@@ -1,8 +1,8 @@
-# GitHub Labels — GuildPass Integrations
+# GitHub Labels — GuildPass Integrations <!-- IC: 272 -->
 
-This file documents the labels used on the `guildpass-app` repository for issue triage and GrantFox campaign management.
+This file documents the labels used on the `guildpass-app` repository for issue triage and GrantFox campaign management. <!-- IC: 273 -->
 
-Maintainers can create these labels via **GitHub Settings → Labels** or using the GitHub CLI:
+Maintainers can create these labels via **GitHub Settings → Labels** or using the GitHub CLI: <!-- IC: 274 -->
 
 ```bash
 gh label create "good first issue" --color "7057ff" --description "Well-scoped task for new contributors"
@@ -23,20 +23,20 @@ gh label create "wont-fix" --color "ffffff" --description "This will not be work
 gh label create "duplicate" --color "cfd3d7" --description "This issue or PR already exists"
 ```
 
-## Label Usage Guide
+## Label Usage Guide <!-- IC: 275 -->
 
-| Label | When to use |
-|---|---|
-| `good first issue` | Well-scoped tasks with clear acceptance criteria, minimal context required |
-| `help wanted` | Maintainers want community help — may be harder than `good first issue` |
-| `bug` | Confirmed broken behaviour |
-| `feature` | New command, integration, or capability |
-| `documentation` | Docs-only changes on the Docusaurus site |
-| `discord-bot` | Changes in `apps/discord-bot` |
-| `docs-site` | Changes in `apps/docs` |
-| `integration-client` | Changes in `packages/integration-client` |
-| `tests` | Test-only changes or new test coverage |
-| `priority: high` | Blocks users or maintainers — address within 48 h |
-| `priority: medium` | Should be addressed in the current sprint |
-| `priority: low` | Nice to have, no urgency |
-| `needs-triage` | Default for new, unreviewed issues |
+| Label | When to use | <!-- IC: 276 -->
+|---|---| <!-- IC: 277 -->
+| `good first issue` | Well-scoped tasks with clear acceptance criteria, minimal context required | <!-- IC: 278 -->
+| `help wanted` | Maintainers want community help — may be harder than `good first issue` | <!-- IC: 279 -->
+| `bug` | Confirmed broken behaviour | <!-- IC: 280 -->
+| `feature` | New command, integration, or capability | <!-- IC: 281 -->
+| `documentation` | Docs-only changes on the Docusaurus site | <!-- IC: 282 -->
+| `discord-bot` | Changes in `apps/discord-bot` | <!-- IC: 283 -->
+| `docs-site` | Changes in `apps/docs` | <!-- IC: 284 -->
+| `integration-client` | Changes in `packages/integration-client` | <!-- IC: 285 -->
+| `tests` | Test-only changes or new test coverage | <!-- IC: 286 -->
+| `priority: high` | Blocks users or maintainers — address within 48 h | <!-- IC: 287 -->
+| `priority: medium` | Should be addressed in the current sprint | <!-- IC: 288 -->
+| `priority: low` | Nice to have, no urgency | <!-- IC: 289 -->
+| `needs-triage` | Default for new, unreviewed issues | <!-- IC: 290 -->

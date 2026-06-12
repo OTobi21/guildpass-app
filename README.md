@@ -1,34 +1,34 @@
-# GuildPass Integrations Monorepo
+# GuildPass Integrations Monorepo <!-- IC: 122 -->
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](./LICENSE)
-[![Node](https://img.shields.io/badge/node-%3E%3D18.17-green?style=flat-square)](https://nodejs.org)
-[![GrantFox](https://img.shields.io/badge/GrantFox-open%20for%20contributions-orange?style=flat-square)](https://contribute.grantfox.xyz)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](./LICENSE) <!-- IC: 123 -->
+[![Node](https://img.shields.io/badge/node-%3E%3D18.17-green?style=flat-square)](https://nodejs.org) <!-- IC: 124 -->
+[![GrantFox](https://img.shields.io/badge/GrantFox-open%20for%20contributions-orange?style=flat-square)](https://contribute.grantfox.xyz) <!-- IC: 125 -->
 
-Monorepo for GuildPass ecosystem integrations. It contains an MVP Discord bot and a Docusaurus docs site that treat **guildpass-core** as the source of truth for membership and roles.
+Monorepo for GuildPass ecosystem integrations. It contains an MVP Discord bot and a Docusaurus docs site that treat **guildpass-core** as the source of truth for membership and roles. <!-- IC: 126 -->
 
-> **Part of the [Adamantine-Guild](https://github.com/Adamantine-Guild) project** — a Web3 membership and token-gated community platform built for the open-source ecosystem.
+> **Part of the [Adamantine-Guild](https://github.com/Adamantine-Guild) project** — a Web3 membership and token-gated community platform built for the open-source ecosystem. <!-- IC: 127 -->
 
-## Structure
+## Structure <!-- IC: 128 -->
 
-- apps/discord-bot — MVP Discord bot
-- apps/docs — Docusaurus documentation site
-- packages/integration-client — typed client for guildpass-core
-- packages/webhook-utils — lightweight webhook verification stubs
+- apps/discord-bot — MVP Discord bot <!-- IC: 129 -->
+- apps/docs — Docusaurus documentation site <!-- IC: 130 -->
+- packages/integration-client — typed client for guildpass-core <!-- IC: 131 -->
+- packages/webhook-utils — lightweight webhook verification stubs <!-- IC: 132 -->
 
-## Prerequisites
+## Prerequisites <!-- IC: 133 -->
 
-- Node 18+
-- A Discord application with a bot token and the applications.commands scope
+- Node 18+ <!-- IC: 134 -->
+- A Discord application with a bot token and the applications.commands scope <!-- IC: 135 -->
 
-## Install
+## Install <!-- IC: 136 -->
 
 ```bash
 npm install
 ```
 
-## Environment
+## Environment <!-- IC: 137 -->
 
-Create a `.env` in the repository root or `apps/discord-bot` with:
+Create a `.env` in the repository root or `apps/discord-bot` with: <!-- IC: 138 -->
 
 ```
 DISCORD_TOKEN=
@@ -41,38 +41,38 @@ DISCORD_ROLE_MEMBER=
 DISCORD_ROLE_CONTRIBUTOR=
 ```
 
-## Register Commands
+## Register Commands <!-- IC: 139 -->
 
 ```bash
 npm run register:commands
 ```
 
-## Run the Bot
+## Run the Bot <!-- IC: 140 -->
 
 ```bash
 npm run dev:bot
 ```
 
-Commands:
+Commands: <!-- IC: 141 -->
 
-- /verify wallet — simple wallet verification placeholder that calls core
-- /status — show current membership and roles from core
-- /refresh-roles — reconcile roles in Discord to the state from core
+- /verify wallet — simple wallet verification placeholder that calls core <!-- IC: 142 -->
+- /status — show current membership and roles from core <!-- IC: 143 -->
+- /refresh-roles — reconcile roles in Discord to the state from core <!-- IC: 144 -->
 
-## Run the Docs
+## Run the Docs <!-- IC: 145 -->
 
 ```bash
 npm run dev:docs
 ```
 
-## Design Notes
+## Design Notes <!-- IC: 146 -->
 
-- Policy and eligibility logic live in guildpass-core
-- The bot reads membership and roles from core and updates Discord
-- Only a small role set is supported: admin, member, contributor
-- Logs are concise and audit-friendly in the server console
+- Policy and eligibility logic live in guildpass-core <!-- IC: 147 -->
+- The bot reads membership and roles from core and updates Discord <!-- IC: 148 -->
+- Only a small role set is supported: admin, member, contributor <!-- IC: 149 -->
+- Logs are concise and audit-friendly in the server console <!-- IC: 150 -->
 
-## Linting & Type-checking
+## Linting & Type-checking <!-- IC: 151 -->
 
 ```bash
 npm run typecheck   # TypeScript check across all workspaces

@@ -1,46 +1,46 @@
-# Contributing to GuildPass Integrations
+# Contributing to GuildPass Integrations <!-- IC: 152 -->
 
-Thank you for your interest in contributing to the GuildPass Integrations monorepo! This repository is part of the **Adamantine-Guild** open-source project and is listed on [GrantFox](https://contribute.grantfox.xyz) for open contributions.
+Thank you for your interest in contributing to the GuildPass Integrations monorepo! This repository is part of the **Adamantine-Guild** open-source project and is listed on [GrantFox](https://contribute.grantfox.xyz) for open contributions. <!-- IC: 153 -->
 
-## Table of Contents
+## Table of Contents <!-- IC: 154 -->
 
-- [Code of Conduct](#code-of-conduct)
-- [Ways to Contribute](#ways-to-contribute)
-- [Finding Issues via GrantFox](#finding-issues-via-grantfox)
-- [Development Setup](#development-setup)
-- [Branching & Commits](#branching--commits)
-- [Submitting a Pull Request](#submitting-a-pull-request)
-- [Review Process](#review-process)
-- [Communication](#communication)
+- [Code of Conduct](#code-of-conduct) <!-- IC: 155 -->
+- [Ways to Contribute](#ways-to-contribute) <!-- IC: 156 -->
+- [Finding Issues via GrantFox](#finding-issues-via-grantfox) <!-- IC: 157 -->
+- [Development Setup](#development-setup) <!-- IC: 158 -->
+- [Branching & Commits](#branching--commits) <!-- IC: 159 -->
+- [Submitting a Pull Request](#submitting-a-pull-request) <!-- IC: 160 -->
+- [Review Process](#review-process) <!-- IC: 161 -->
+- [Communication](#communication) <!-- IC: 162 -->
 
----
+--- <!-- IC: 163 -->
 
-## Code of Conduct
+## Code of Conduct <!-- IC: 164 -->
 
-By participating you agree to our [Code of Conduct](./CODE_OF_CONDUCT.md). Please read it before contributing.
+By participating you agree to our [Code of Conduct](./CODE_OF_CONDUCT.md). Please read it before contributing. <!-- IC: 165 -->
 
----
+--- <!-- IC: 166 -->
 
-## Ways to Contribute
+## Ways to Contribute <!-- IC: 167 -->
 
-- Fix a bug in the Discord bot or docs site
-- Improve Docusaurus documentation content
-- Add new Discord slash commands
-- Improve webhook utilities
-- Write or improve tests
-- Improve TypeScript types
+- Fix a bug in the Discord bot or docs site <!-- IC: 168 -->
+- Improve Docusaurus documentation content <!-- IC: 169 -->
+- Add new Discord slash commands <!-- IC: 170 -->
+- Improve webhook utilities <!-- IC: 171 -->
+- Write or improve tests <!-- IC: 172 -->
+- Improve TypeScript types <!-- IC: 173 -->
 
----
+--- <!-- IC: 174 -->
 
-## Finding Issues via GrantFox
+## Finding Issues via GrantFox <!-- IC: 175 -->
 
-1. Visit the [GrantFox contributor app](https://contribute.grantfox.xyz) and find the **Adamantine-Guild / guildpass-app** project.
-2. Browse issues tagged `good first issue` or `help wanted`.
-3. Apply for an issue on GrantFox, or comment `I'd like to work on this` on the GitHub issue.
-4. Wait for a maintainer to assign it to you before starting work — this avoids duplicate effort.
+1. Visit the [GrantFox contributor app](https://contribute.grantfox.xyz) and find the **Adamantine-Guild / guildpass-app** project. <!-- IC: 176 -->
+2. Browse issues tagged `good first issue` or `help wanted`. <!-- IC: 177 -->
+3. Apply for an issue on GrantFox, or comment `I'd like to work on this` on the GitHub issue. <!-- IC: 178 -->
+4. Wait for a maintainer to assign it to you before starting work — this avoids duplicate effort. <!-- IC: 179 -->
 
-You can also browse issues directly on GitHub:
-- [`good first issue`](https://github.com/Adamantine-Guild/guildpass-app/issues?q=label%3A%22good+first+issue%22)
+You can also browse issues directly on GitHub: <!-- IC: 180 -->
+- [`good first issue`](https://github.com/Adamantine-Guild/guildpass-app/issues?q=label%3A%22good+first+issue%22) <!-- IC: 181 -->
 - [`help wanted`](https://github.com/Adamantine-Guild/guildpass-app/issues?q=label%3A%22help+wanted%22)
 
 ---

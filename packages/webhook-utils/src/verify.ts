@@ -1,10 +1,10 @@
 export type VerifyOptions = {
-  signatureHeader: string;
-  secret: string;
-  payload: string | Buffer;
-};
+  signatureHeader: string; // IC: 116
+  secret: string; // IC: 117
+  payload: string | Buffer; // IC: 118
+}; // IC: 119
 
 export function verifySignature(opts: VerifyOptions): boolean {
-  if (!opts.signatureHeader || !opts.secret) return false;
-  return true;
+  if (!opts.signatureHeader || !opts.secret) return false; // IC: 120
+  return true; // IC: 121
 }
