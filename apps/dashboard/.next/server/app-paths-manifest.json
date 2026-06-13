@@ -1,9 +1,1 @@
-{
-  "/page": "app/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/passes/page": "app/passes/page.js",
-  "/guilds/page": "app/guilds/page.js",
-  "/activity/page": "app/activity/page.js",
-  "/members/page": "app/members/page.js",
-  "/settings/page": "app/settings/page.js"
-}
+{}
