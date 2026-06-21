@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifySignature } from "@guildpass/webhook-utils";
 import { getEnv } from "@/lib/env";
 import { activityStorage } from "@/lib/activity/storage";
-import { ActivityEvent, ActivityType, WebhookPayload } from "@/lib/activity/types";
+import { ActivityEvent, WebhookPayload } from "@/lib/activity/types";
+import { activityService } from "@/lib/data/activity-service";
 
 export async function POST(req: NextRequest) {
   try {
@@ -72,55 +73,110 @@ function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | null {
     case "membership.created":
       return {
         id,
-        type: "member_joined",
+        type: "member.joined",
+        source: "webhook",
+        severity: "info",
+        actor: {
+          name: data.name,
+          wallet: data.wallet,
+        },
         description: `New member joined: ${data.name || data.wallet}`,
-        actor: data.name || data.wallet,
         timestamp,
+        entity: {
+          type: "member",
+          id: data.id,
+          name: data.name,
+        },
         metadata: data,
       };
     case "membership.updated":
       return {
         id,
-        type: "membership_updated",
+        type: "member.left",
+        source: "webhook",
+        severity: "info",
+        actor: {
+          name: data.name,
+          wallet: data.wallet,
+        },
         description: `Member ${data.name || data.wallet} updated`,
-        actor: data.name || data.wallet,
         timestamp,
+        entity: {
+          type: "member",
+          id: data.id,
+          name: data.name,
+        },
         metadata: data,
       };
     case "pass.created":
       return {
         id,
-        type: "pass_created",
+        type: "pass.created",
+        source: "webhook",
+        severity: "info",
+        actor: {
+          name: "Admin",
+        },
         description: `New pass created: ${data.name}`,
-        actor: "Admin",
         timestamp,
+        entity: {
+          type: "pass",
+          id: data.id,
+          name: data.name,
+        },
         metadata: data,
       };
     case "pass.updated":
       return {
         id,
-        type: "pass_updated",
+        type: "pass.updated",
+        source: "webhook",
+        severity: "info",
+        actor: {
+          name: "Admin",
+        },
         description: `Pass updated: ${data.name}`,
-        actor: "Admin",
         timestamp,
+        entity: {
+          type: "pass",
+          id: data.id,
+          name: data.name,
+        },
         metadata: data,
       };
     case "guild.updated":
       return {
         id,
-        type: "guild_updated",
+        type: "guild.updated",
+        source: "webhook",
+        severity: "info",
+        actor: {
+          name: "Admin",
+        },
         description: `Guild settings updated: ${data.name}`,
-        actor: "Admin",
         timestamp,
+        entity: {
+          type: "guild",
+          id: data.id,
+          name: data.name,
+        },
         metadata: data,
       };
     case "verification.completed":
       return {
         id,
-        type: "verification_completed",
+        type: "verification.completed",
+        source: "webhook",
+        severity: "info",
+        actor: {
+          wallet: data.wallet,
+        },
         description: `Verification completed for ${data.wallet}`,
-        actor: data.wallet,
         timestamp,
+        entity: {
+          type: "verification",
+          id: data.wallet,
+        },
         metadata: data,
       };
     default:

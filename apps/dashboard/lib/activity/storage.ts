@@ -12,6 +12,37 @@ export interface IActivityStorage {
 }
 
 /**
+ * Convert old-style mock activities to new ActivityEvent format
+ */
+function convertMockActivityToEvent(activity: any): ActivityEvent {
+  // Map old type strings to new ActivityEventType
+  const typeMap: Record<string, any> = {
+    member_joined: "member.joined",
+    pass_created: "pass.created",
+    pass_purchased: "pass.purchased",
+    role_changed: "member.roles_changed",
+    access_granted: "access.granted",
+    membership_updated: "member.left",
+    pass_updated: "pass.updated",
+    guild_updated: "guild.updated",
+    verification_completed: "verification.completed",
+  };
+
+  return {
+    id: activity.id,
+    type: typeMap[activity.type] || "webhook.received",
+    source: "dashboard",
+    severity: "info",
+    actor: {
+      name: activity.actor,
+    },
+    timestamp: activity.timestamp,
+    description: activity.description,
+    metadata: activity.metadata,
+  };
+}
+
+/**
  * In-memory implementation of activity storage.
  * Note: This will reset on server restart.
  */
@@ -20,9 +51,11 @@ class InMemoryActivityStorage implements IActivityStorage {
   private processedIds = new Set<string>();
 
   constructor() {
-    // Seed with mock data if needed, or start empty
-    // For now, let's keep it separate from the existing mock-data.ts 
-    // to avoid confusion between static mocks and dynamic ingestion.
+    // Seed with existing mock data converted to new format
+    mockActivity.forEach((activity) => {
+      this.events.unshift(convertMockActivityToEvent(activity));
+      this.processedIds.add(activity.id);
+    });
   }
 
   async addEvent(event: ActivityEvent): Promise<void> {
