@@ -17,3 +17,48 @@ export type VerificationResult = {
   verified: boolean; // IC: 111
   message?: string; // IC: 112
 }; // IC: 113
+
+/**
+ * Structured audit activity event model
+ */
+export type ActivityEventType =
+  | "pass.created"
+  | "pass.updated"
+  | "pass.purchased"
+  | "pass.deleted"
+  | "guild.created"
+  | "guild.updated"
+  | "guild.deleted"
+  | "member.joined"
+  | "member.left"
+  | "member.roles_changed"
+  | "access.granted"
+  | "access.revoked"
+  | "verification.completed"
+  | "webhook.received";
+
+export type ActivityEventSource = "dashboard" | "webhook" | "core_api";
+
+export type ActivityEventSeverity = "info" | "warning" | "error" | "critical";
+
+export type ActivityEventEntity = {
+  type: "pass" | "guild" | "member" | "verification" | "webhook";
+  id: string;
+  name?: string;
+};
+
+export type ActivityEvent = {
+  id: string;
+  type: ActivityEventType;
+  source: ActivityEventSource;
+  severity: ActivityEventSeverity;
+  actor: {
+    id?: string;
+    name?: string;
+    wallet?: string;
+  };
+  timestamp: string;
+  description: string;
+  entity?: ActivityEventEntity;
+  metadata?: Record<string, any>;
+};

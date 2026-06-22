@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { type Activity, fetchActivity, generateMockActivity } from "@/lib/mock-data";
+import { type ActivityEvent } from "@guildpass/integration-client";
+import { fetchActivity, generateMockActivity } from "@/lib/mock-data";
 
 const REFRESH_MS =
   Number(process.env.NEXT_PUBLIC_ACTIVITY_REFRESH_MS) || 15_000;
@@ -12,18 +13,18 @@ interface UseActivityFeedOptions {
 }
 
 interface UseActivityFeedResult {
-  events: Activity[];
+  events: ActivityEvent[];
   lastUpdated: Date | null;
   loading: boolean;
 }
 
 export function useActivityFeed({ limit }: UseActivityFeedOptions = {}): UseActivityFeedResult {
-  const [events, setEvents]           = useState<Activity[]>([]);
+  const [events, setEvents]           = useState<ActivityEvent[]>([]);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [loading, setLoading]         = useState(true);
   const seenIds                       = useRef(new Set<string>());
 
-  const mergeEvents = useCallback((incoming: Activity[]) => {
+  const mergeEvents = useCallback((incoming: ActivityEvent[]) => {
     const fresh = incoming.filter((e) => !seenIds.current.has(e.id));
     if (fresh.length === 0) return;
     fresh.forEach((e) => seenIds.current.add(e.id));
@@ -42,7 +43,20 @@ export function useActivityFeed({ limit }: UseActivityFeedOptions = {}): UseActi
       const data = await fetchActivity();
       mergeEvents(data);
       // Simulate a new arriving event every tick in mock/dev mode
-      mergeEvents([generateMockActivity()]);
+      const mock = generateMockActivity();
+      // Convert old-style mock to new format for the hook
+      const convertedMock: ActivityEvent = {
+        id: mock.id,
+        type: "member.joined",
+        source: "dashboard",
+        severity: "info",
+        actor: {
+          name: mock.actor,
+        },
+        timestamp: mock.timestamp,
+        description: mock.description,
+      };
+      mergeEvents([convertedMock]);
     } catch {
       // Silently swallow fetch errors; the feed keeps its last known state
     } finally {
