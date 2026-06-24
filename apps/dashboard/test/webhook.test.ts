@@ -47,12 +47,14 @@ describe("Webhook Ingestion", () => {
 
   test("should handle duplicate events idempotently", async () => {
     const eventId = "duplicate_123";
-    const event = {
+    const event: any = {
       id: eventId,
-      type: "pass_created" as const,
+      type: "pass.created",
+      source: "webhook",
+      severity: "info",
       description: "Test Pass",
       timestamp: new Date().toISOString(),
-      actor: "Admin"
+      actor: { name: "Admin" }
     };
 
     await activityStorage.addEvent(event);

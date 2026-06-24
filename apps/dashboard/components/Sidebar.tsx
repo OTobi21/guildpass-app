@@ -9,6 +9,7 @@ const navItems = [
   { name: "Guilds",    href: "/guilds",    icon: "🏰" },
   { name: "Members",   href: "/members",   icon: "👥" },
   { name: "Activity",  href: "/activity",  icon: "📋" },
+  { name: "Integrations", href: "/integrations", icon: "🔌" },
   { name: "Settings",  href: "/settings",  icon: "⚙️" },
 ];
 
