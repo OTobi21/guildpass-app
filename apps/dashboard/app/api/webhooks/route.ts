@@ -3,11 +3,13 @@ import { verifySignature } from "@guildpass/webhook-utils";
 import { getEnv } from "@/lib/env";
 import { activityStorage } from "@/lib/activity/storage";
 import { ActivityEvent, WebhookPayload } from "@/lib/activity/types";
+import { validateWebhookPayload } from "@/lib/activity/validation";
+import { sanitiseWebhookData, getSanitisedDescription } from "@/lib/activity/sanitise";
 
 export async function POST(req: NextRequest) {
   try {
     const { WEBHOOK_SECRET } = getEnv();
-    
+
     if (!WEBHOOK_SECRET) {
       console.error("WEBHOOK_SECRET is not configured");
       return NextResponse.json(
@@ -25,7 +27,7 @@ export async function POST(req: NextRequest) {
     }
 
     const rawBody = await req.text();
-    
+
     const verification = verifySignature({
       signatureHeader,
       secret: WEBHOOK_SECRET,
@@ -39,11 +41,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const payload = JSON.parse(rawBody) as WebhookPayload;
+    const validation = validateWebhookPayload(rawBody);
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: validation.error },
+        { status: 400 }
+      );
+    }
+
+    const payload = validation.payload;
 
     // Map webhook event to dashboard activity
     const activity = mapWebhookToActivity(payload);
-    
+
     if (activity) {
       const result = await activityStorage.recordActivityEvent(activity);
       if (result === "duplicate") {
@@ -66,7 +76,9 @@ export async function POST(req: NextRequest) {
 function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | null {
   const { type, data, id, created } = payload;
   const timestamp = new Date(created * 1000).toISOString();
-  const entityId = data.id ?? id;
+  const entityId = typeof data.id === "string" ? data.id : id;
+  const sanitised = sanitiseWebhookData(type, data);
+  const description = getSanitisedDescription(type, data);
 
   switch (type) {
     case "membership.created":
@@ -76,17 +88,17 @@ function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | null {
         source: "webhook",
         severity: "info",
         actor: {
-          name: data.name,
-          wallet: data.wallet,
+          name: typeof data.name === "string" ? data.name : undefined,
+          wallet: typeof data.wallet === "string" ? data.wallet : undefined,
         },
-        description: `New member joined: ${data.name || data.wallet}`,
+        description,
         timestamp,
         entity: {
           type: "member",
           id: entityId,
-          name: data.name,
+          name: typeof data.name === "string" ? data.name : undefined,
         },
-        metadata: data,
+        metadata: sanitised,
       };
     case "membership.updated":
       return {
@@ -95,17 +107,17 @@ function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | null {
         source: "webhook",
         severity: "info",
         actor: {
-          name: data.name,
-          wallet: data.wallet,
+          name: typeof data.name === "string" ? data.name : undefined,
+          wallet: typeof data.wallet === "string" ? data.wallet : undefined,
         },
-        description: `Member ${data.name || data.wallet} updated`,
+        description,
         timestamp,
         entity: {
           type: "member",
           id: entityId,
-          name: data.name,
+          name: typeof data.name === "string" ? data.name : undefined,
         },
-        metadata: data,
+        metadata: sanitised,
       };
     case "pass.created":
       return {
@@ -116,14 +128,14 @@ function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | null {
         actor: {
           name: "Admin",
         },
-        description: `New pass created: ${data.name}`,
+        description,
         timestamp,
         entity: {
           type: "pass",
           id: entityId,
-          name: data.name,
+          name: typeof data.name === "string" ? data.name : undefined,
         },
-        metadata: data,
+        metadata: sanitised,
       };
     case "pass.updated":
       return {
@@ -134,14 +146,14 @@ function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | null {
         actor: {
           name: "Admin",
         },
-        description: `Pass updated: ${data.name}`,
+        description,
         timestamp,
         entity: {
           type: "pass",
           id: entityId,
-          name: data.name,
+          name: typeof data.name === "string" ? data.name : undefined,
         },
-        metadata: data,
+        metadata: sanitised,
       };
     case "guild.updated":
       return {
@@ -152,14 +164,14 @@ function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | null {
         actor: {
           name: "Admin",
         },
-        description: `Guild settings updated: ${data.name}`,
+        description,
         timestamp,
         entity: {
           type: "guild",
           id: entityId,
-          name: data.name,
+          name: typeof data.name === "string" ? data.name : undefined,
         },
-        metadata: data,
+        metadata: sanitised,
       };
     case "verification.completed":
       return {
@@ -168,15 +180,15 @@ function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | null {
         source: "webhook",
         severity: "info",
         actor: {
-          wallet: data.wallet,
+          wallet: typeof data.wallet === "string" ? data.wallet : undefined,
         },
-        description: `Verification completed for ${data.wallet}`,
+        description,
         timestamp,
         entity: {
           type: "verification",
           id: data.wallet ?? id,
         },
-        metadata: data,
+        metadata: sanitised,
       };
     default:
       return null;
