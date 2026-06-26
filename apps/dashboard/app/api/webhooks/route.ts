@@ -3,7 +3,7 @@ import { verifySignature } from "@guildpass/webhook-utils";
 import { getEnv } from "@/lib/env";
 import { mapWebhookToActivity } from "@/lib/activity/mapper";
 import { activityStorage } from "@/lib/activity/storage";
-import type { WebhookPayload } from "@/lib/activity/types";
+import { ActivityEvent, WebhookPayload } from "@/lib/activity/types";
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,16 +42,15 @@ export async function POST(req: NextRequest) {
 
     const payload = JSON.parse(rawBody) as WebhookPayload;
 
-    // Idempotency check
-    if (await activityStorage.isDuplicate(payload.id)) {
-      return NextResponse.json({ status: "ignored", reason: "duplicate" });
-    }
-
     // Map webhook event to dashboard activity
     const activity = mapWebhookToActivity(payload);
     
     if (activity) {
-      await activityStorage.addEvent(activity);
+      const result = await activityStorage.recordActivityEvent(activity);
+      if (result === "duplicate") {
+        return NextResponse.json({ status: "ignored", reason: "duplicate" });
+      }
+
       return NextResponse.json({ status: "success", id: activity.id });
     }
 

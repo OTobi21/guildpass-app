@@ -158,6 +158,34 @@ if (!result.valid) {
 
 ---
 
+## Live API Mode
+
+The dashboard supports two API modes controlled by the `DASHBOARD_API_MODE` environment variable:
+
+- `mock` (default) — the app uses local mock data for all pages and API routes.
+- `live` — the app will forward membership and verification lookups to a GuildPass core API via the `@guildpass/integration-client` package.
+
+To enable live mode, set these environment variables for the dashboard app (server-side only):
+
+```env
+# set the dashboard API mode
+DASHBOARD_API_MODE=live
+
+# GuildPass core API base URL (required in live mode)
+GUILD_PASS_CORE_URL=https://your-core.example.com
+
+# API key for the core (server-side secret)
+GUILD_PASS_CORE_API_KEY=supersecret
+
+# webhook secret (if you use webhooks)
+WEBHOOK_SECRET=your_webhook_secret
+```
+
+Notes:
+- Live mode must run on the server-side (Next.js App Router API routes) — the client bundle never receives your `GUILD_PASS_CORE_API_KEY`.
+- The dashboard's API routes perform lookups by `wallet` or `discordUserId` when live mode is enabled (e.g. `GET /api/members?wallet=0x...`).
+- Mock mode remains the default for easy local development.
+
 ## Available Routes
 
 - `/` – Landing page
@@ -166,14 +194,26 @@ if (!result.valid) {
 - `/guilds` – Manage communities/guilds
 - `/members` – Manage members
 - `/activity` – View activity log
+- `/integrations` – Manage integrations & view status (NEW!)
 - `/settings` – App settings
+
+---
+
+## Integrations
+
+### Discord Bot
+The Discord bot (`apps/discord-bot`) is preserved as an optional integration and not required for the dashboard to function. The dashboard exposes an integration status UI to check if the bot is configured and healthy.
+
+**Health-Check Contract:**
+For a live production environment, the integration adapter checks the bot's health using two strategies:
+1.  **Microservice Health Endpoint:** If `DISCORD_BOT_STATUS_URL` is set, the dashboard will ping the bot's HTTP health endpoint (e.g., `GET /health`). It expects a JSON response containing `status: "healthy"` or `gatewayConnected: true`.
+2.  **Discord REST API:** If no endpoint is configured, the dashboard falls back to directly pinging the Discord API (`GET https://discord.com/api/v10/guilds/{guildId}`) using the provided `DISCORD_TOKEN`.
 
 ---
 
 ## Notes
 
 - All data is currently mock data (see `apps/dashboard/lib/mock-data.ts`).
-- The Discord bot (`apps/discord-bot`) is preserved as an optional integration and not required for the dashboard to function.
 - The docs site (`apps/docs`) is also preserved as optional legacy documentation.
 
 ---
