@@ -89,9 +89,9 @@ export async function GET(request: Request): Promise<NextResponse> {
  * Requires members:write permission (invite / create a member).
  *
  * ⚠️  In production, resolve the session from the request (JWT / cookie)
- *     instead of using MOCK_SESSION, then assertPermission against it.
+ *     instead of using MOCK_API_SESSION, then assertPermission against it.
  */
-export async function POST(): Promise<NextResponse> {
+export async function POST(request: Request): Promise<NextResponse> {
   try {
     assertPermission(MOCK_API_SESSION, "members:write");
   } catch (err) {
@@ -102,16 +102,17 @@ export async function POST(): Promise<NextResponse> {
   }
 
   return handleApiError(async () => {
-    // TODO: implement member invitation / creation logic
-    return { message: "Member invited (stub)" };
+    const body = await request.json();
+    const memberRepository = getMemberRepository();
+    return await memberRepository.create(body);
   });
 }
 
 /**
- * DELETE /api/members
- * Requires members:write permission (remove a member).
+ * PATCH /api/members?id=...
+ * Requires members:write permission.
  */
-export async function DELETE(): Promise<NextResponse> {
+export async function PATCH(request: Request): Promise<NextResponse> {
   try {
     assertPermission(MOCK_API_SESSION, "members:write");
   } catch (err) {
@@ -121,8 +122,43 @@ export async function DELETE(): Promise<NextResponse> {
     throw err;
   }
 
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+
+  if (!id) return apiError("Missing member ID", 400);
+
   return handleApiError(async () => {
-    // TODO: implement member removal logic
-    return { message: "Member removed (stub)" };
+    const body = await request.json();
+    const memberRepository = getMemberRepository();
+    const updated = await memberRepository.update(id, body);
+    if (!updated) throw new Error("Member not found or update failed");
+    return updated;
+  });
+}
+
+/**
+ * DELETE /api/members?id=...
+ * Requires members:write permission (remove a member).
+ */
+export async function DELETE(request: Request): Promise<NextResponse> {
+  try {
+    assertPermission(MOCK_API_SESSION, "members:write");
+  } catch (err) {
+    if (err instanceof PermissionDeniedError) {
+      return apiError(err.message, 403);
+    }
+    throw err;
+  }
+
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+
+  if (!id) return apiError("Missing member ID", 400);
+
+  return handleApiError(async () => {
+    const memberRepository = getMemberRepository();
+    const success = await memberRepository.delete(id);
+    if (!success) throw new Error("Member not found or deletion failed");
+    return { success: true };
   });
 }

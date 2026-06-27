@@ -36,9 +36,9 @@ export async function GET(): Promise<NextResponse> {
  * Requires passes:write permission.
  *
  * ⚠️  In production, resolve the session from the request (JWT / cookie)
- *     instead of using MOCK_SESSION, then assertPermission against it.
+ *     instead of using MOCK_API_SESSION, then assertPermission against it.
  */
-export async function POST(): Promise<NextResponse> {
+export async function POST(request: Request): Promise<NextResponse> {
   try {
     assertPermission(MOCK_API_SESSION, "passes:write");
   } catch (err) {
@@ -49,16 +49,17 @@ export async function POST(): Promise<NextResponse> {
   }
 
   return handleApiError(async () => {
-    // TODO: implement pass creation logic
-    return { message: "Pass created (stub)" };
+    const body = await request.json();
+    const passRepository = getPassRepository();
+    return await passRepository.create(body);
   });
 }
 
 /**
- * DELETE /api/passes
+ * PATCH /api/passes?id=...
  * Requires passes:write permission.
  */
-export async function DELETE(): Promise<NextResponse> {
+export async function PATCH(request: Request): Promise<NextResponse> {
   try {
     assertPermission(MOCK_API_SESSION, "passes:write");
   } catch (err) {
@@ -68,20 +69,25 @@ export async function DELETE(): Promise<NextResponse> {
     throw err;
   }
 
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+
+  if (!id) return apiError("Missing pass ID", 400);
+
   return handleApiError(async () => {
-    // TODO: implement pass deletion logic
-    return { message: "Pass deleted (stub)" };
+    const body = await request.json();
+    const passRepository = getPassRepository();
+    const updated = await passRepository.update(id, body);
+    if (!updated) throw new Error("Pass not found or update failed");
+    return updated;
   });
 }
 
 /**
- * POST /api/passes
+ * DELETE /api/passes?id=...
  * Requires passes:write permission.
- *
- * ⚠️  In production, resolve the session from the request (JWT / cookie)
- *     instead of using MOCK_SESSION, then assertPermission against it.
  */
-export async function POST(): Promise<NextResponse> {
+export async function DELETE(request: Request): Promise<NextResponse> {
   try {
     assertPermission(MOCK_API_SESSION, "passes:write");
   } catch (err) {
@@ -91,28 +97,15 @@ export async function POST(): Promise<NextResponse> {
     throw err;
   }
 
-  return handleApiError(async () => {
-    // TODO: implement pass creation logic
-    return { message: "Pass created (stub)" };
-  });
-}
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
 
-/**
- * DELETE /api/passes
- * Requires passes:write permission.
- */
-export async function DELETE(): Promise<NextResponse> {
-  try {
-    assertPermission(MOCK_API_SESSION, "passes:write");
-  } catch (err) {
-    if (err instanceof PermissionDeniedError) {
-      return apiError(err.message, 403);
-    }
-    throw err;
-  }
+  if (!id) return apiError("Missing pass ID", 400);
 
   return handleApiError(async () => {
-    // TODO: implement pass deletion logic
-    return { message: "Pass deleted (stub)" };
+    const passRepository = getPassRepository();
+    const success = await passRepository.delete(id);
+    if (!success) throw new Error("Pass not found or deletion failed");
+    return { success: true };
   });
 }
