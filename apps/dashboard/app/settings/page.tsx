@@ -21,28 +21,60 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { useSession } from "@/lib/hooks/useSession";
 import { canEditSettings } from "@/lib/permissions";
+import { useOptimisticMutation } from "@/lib/hooks/useOptimisticMutation";
+import { useState, useRef } from "react";
 
 export default function SettingsPage() {
   const session = useSession();
   const canEdit = canEditSettings(session);
+  const [workspaceName, setWorkspaceName] = useState("GuildPass DAO");
+  const [timezone, setTimezone] = useState("UTC");
+  const [displayName, setDisplayName] = useState(session.name);
+  const [email, setEmail] = useState("admin@guildpass.xyz");
+
+  const previousSettingsRef = useRef({ workspaceName, timezone, displayName, email });
+
+  const saveMutation = useOptimisticMutation<{ message: string }, any>({
+    mutationFn: async (data) => {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (res.status === 403) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(`Access denied: ${body.error ?? "settings:write permission required"}`);
+      }
+
+      if (!res.ok) {
+        throw new Error("An unexpected error occurred. Please try again.");
+      }
+
+      return res.json();
+    },
+    onOptimisticUpdate: (data) => {
+      previousSettingsRef.current = { workspaceName, timezone, displayName, email };
+      // Note: In a real app, we'd update the state with `data` here.
+      // For this mock, we assume the form state is already updated via controlled inputs.
+    },
+    onRollback: () => {
+      setWorkspaceName(previousSettingsRef.current.workspaceName);
+      setTimezone(previousSettingsRef.current.timezone);
+      setDisplayName(previousSettingsRef.current.displayName);
+      setEmail(previousSettingsRef.current.email);
+    },
+    onSuccess: () => {
+      alert("Settings saved successfully.");
+    },
+    onError: (error) => {
+      alert(error.message);
+    }
+  });
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-
-    const res = await fetch("/api/settings", { method: "PATCH" });
-
-    if (res.status === 403) {
-      const body = await res.json().catch(() => ({}));
-      alert(`Access denied: ${body.error ?? "settings:write permission required"}`);
-      return;
-    }
-
-    if (res.ok) {
-      alert("Settings saved successfully.");
-      return;
-    }
-
-    alert("An unexpected error occurred. Please try again.");
+    saveMutation.mutate({ workspaceName, timezone, displayName, email });
   }
 
   return (
@@ -83,12 +115,13 @@ export default function SettingsPage() {
                 <input
                   id="workspace-name"
                   type="text"
-                  defaultValue="GuildPass DAO"
-                  disabled={!canEdit}
+                  value={workspaceName}
+                  onChange={(e) => setWorkspaceName(e.target.value)}
+                  disabled={!canEdit || saveMutation.isPending}
                   className={`w-full border rounded-lg px-4 py-2 transition-colors ${canEdit
                       ? "border-slate-300 text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500"
                       : "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
-                    }`}
+                    } ${saveMutation.isPending ? "opacity-50" : ""}`}
                 />
               </div>
               <div>
@@ -100,11 +133,13 @@ export default function SettingsPage() {
                 </label>
                 <select
                   id="timezone"
-                  disabled={!canEdit}
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                  disabled={!canEdit || saveMutation.isPending}
                   className={`w-full border rounded-lg px-4 py-2 transition-colors ${canEdit
                       ? "border-slate-300 text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500"
                       : "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
-                    }`}
+                    } ${saveMutation.isPending ? "opacity-50" : ""}`}
                 >
                   <option>UTC</option>
                   <option>America/New_York</option>
@@ -128,12 +163,13 @@ export default function SettingsPage() {
                 <input
                   id="display-name"
                   type="text"
-                  defaultValue={session.name}
-                  disabled={!canEdit}
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  disabled={!canEdit || saveMutation.isPending}
                   className={`w-full border rounded-lg px-4 py-2 transition-colors ${canEdit
                       ? "border-slate-300 text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500"
                       : "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
-                    }`}
+                    } ${saveMutation.isPending ? "opacity-50" : ""}`}
                 />
               </div>
               <div>
@@ -146,12 +182,13 @@ export default function SettingsPage() {
                 <input
                   id="email"
                   type="email"
-                  defaultValue="admin@guildpass.xyz"
-                  disabled={!canEdit}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={!canEdit || saveMutation.isPending}
                   className={`w-full border rounded-lg px-4 py-2 transition-colors ${canEdit
                       ? "border-slate-300 text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500"
                       : "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
-                    }`}
+                    } ${saveMutation.isPending ? "opacity-50" : ""}`}
                 />
               </div>
             </div>
@@ -164,9 +201,11 @@ export default function SettingsPage() {
             <button
               id="btn-save-settings"
               type="submit"
-              className="bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium px-6 py-2.5 rounded-lg transition-colors"
+              disabled={saveMutation.isPending}
+              className="bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium px-6 py-2.5 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
             >
-              Save Changes
+              {saveMutation.isPending && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+              {saveMutation.isPending ? "Saving..." : "Save Changes"}
             </button>
           </div>
         )}

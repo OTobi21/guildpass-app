@@ -1,4 +1,5 @@
-import { ActivityEvent, ActivityEventType, ActivityEventSource, ActivityEventSeverity } from "@guildpass/integration-client";
+import { ActivityEvent } from "@guildpass/integration-client";
+import { ActivityQuery, ActivityQueryResult } from "../activity/query";
 import { activityStorage } from "../activity/storage";
 
 /**
@@ -15,25 +16,24 @@ class ActivityService {
       timestamp: new Date().toISOString(),
     };
 
-    await activityStorage.addEvent(fullEvent as any);
+    await activityStorage.addEvent(fullEvent);
     return fullEvent;
   }
 
   /**
    * Get all activity events
    */
-  async getEvents(options?: { limit?: number; type?: ActivityEventType }): Promise<ActivityEvent[]> {
-    let events = await activityStorage.getEvents() as ActivityEvent[];
-    
-    if (options?.type) {
-      events = events.filter(e => e.type === options.type);
+  async getEvents(options?: ActivityQuery): Promise<ActivityEvent[]> {
+    if (!options) {
+      return activityStorage.getEvents();
     }
-    
-    if (options?.limit) {
-      events = events.slice(0, options.limit);
-    }
-    
-    return events;
+
+    const result = await this.queryEvents(options);
+    return result.events;
+  }
+
+  async queryEvents(options?: ActivityQuery): Promise<ActivityQueryResult> {
+    return activityStorage.queryEvents(options);
   }
 
   /**

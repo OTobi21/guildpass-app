@@ -20,12 +20,15 @@ import StatusBadge from "@/components/StatusBadge";
 import { mockPasses, type Pass as MockPass } from "@/lib/mock-data";
 import { useSession } from "@/lib/hooks/useSession";
 import { canManagePasses } from "@/lib/permissions";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { useOptimisticMutation } from "@/lib/hooks/useOptimisticMutation";
 
 export default function PassesPage() {
   const session = useSession();
   const canWrite = canManagePasses(session);
   const [passes, setPasses] = useState<MockPass[]>(mockPasses);
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
+  const previousPassesRef = useRef<MockPass[]>(passes);
 
   useEffect(() => {
     let mounted = true;
@@ -34,7 +37,10 @@ export default function PassesPage() {
         const res = await fetch("/api/passes");
         if (!res.ok) throw new Error("fetch failed");
         const data = await res.json();
-        if (mounted && Array.isArray(data)) setPasses(data);
+        if (mounted && Array.isArray(data)) {
+          setPasses(data);
+          previousPassesRef.current = data;
+        }
       } catch (err) {
         console.warn("Falling back to mock passes:", err);
       }
@@ -44,6 +50,60 @@ export default function PassesPage() {
       mounted = false;
     };
   }, []);
+
+  const updateMutation = useOptimisticMutation<MockPass, { id: string; data: Partial<MockPass> }>({
+    mutationFn: async ({ id, data }) => {
+      const res = await fetch(`/api/passes?id=${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to update pass");
+      }
+      return res.json();
+    },
+    onOptimisticUpdate: ({ id, data }) => {
+      previousPassesRef.current = passes;
+      setPasses((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, ...data } : p))
+      );
+      setPendingIds((prev) => new Set(prev).add(id));
+    },
+    onRollback: (_error, { id }) => {
+      setPasses(previousPassesRef.current);
+      setPendingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    },
+    onSuccess: (updatedPass, { id }) => {
+      setPasses((prev) =>
+        prev.map((p) => (p.id === id ? updatedPass : p))
+      );
+      setPendingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    },
+    onError: (error) => {
+      alert(error.message);
+    }
+  });
+
+  const handleDeactivate = (id: string) => {
+    updateMutation.mutate({ id, data: { status: "inactive" } });
+  };
+
+  const handleEdit = (id: string) => {
+    const name = prompt("Enter new name:");
+    if (name) {
+      updateMutation.mutate({ id, data: { name } });
+    }
+  };
 
   return (
     <DashboardLayout title="Passes" session={session}>
@@ -82,42 +142,52 @@ export default function PassesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {passes.map((pass) => (
-                <tr key={pass.id} className="hover:bg-slate-50">
-                  <td className="px-6 py-4 font-medium text-slate-800">{pass.name}</td>
-                  <td className="px-6 py-4 text-slate-600">{pass.description}</td>
-                  <td className="px-6 py-4">
-                    <StatusBadge status={pass.status} />
-                  </td>
-                  <td className="px-6 py-4 text-slate-600">
-                    {pass.price !== undefined ? `${pass.price} ETH` : "Free"}
-                  </td>
-                  <td className="px-6 py-4 text-slate-600">
-                    {pass.currentSupply} / {pass.maxSupply ?? "∞"}
-                  </td>
-                  {canWrite && (
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <button
-                          id={`btn-edit-pass-${pass.id}`}
-                          className="text-xs text-slate-600 hover:text-violet-600 font-medium transition-colors"
-                          title={`Edit ${pass.name}`}
-                        >
-                          Edit
-                        </button>
-                        <span className="text-slate-300">·</span>
-                        <button
-                          id={`btn-deactivate-pass-${pass.id}`}
-                          className="text-xs text-red-500 hover:text-red-700 font-medium transition-colors"
-                          title={`Deactivate ${pass.name}`}
-                        >
-                          Deactivate
-                        </button>
-                      </div>
+              {passes.map((pass) => {
+                const isPending = pendingIds.has(pass.id);
+                return (
+                  <tr key={pass.id} className={`hover:bg-slate-50 transition-opacity ${isPending ? "opacity-50 pointer-events-none" : ""}`}>
+                    <td className="px-6 py-4 font-medium text-slate-800">
+                      {pass.name}
+                      {isPending && <span className="ml-2 text-xs text-slate-400 animate-pulse">(updating...)</span>}
                     </td>
-                  )}
-                </tr>
-              ))}
+                    <td className="px-6 py-4 text-slate-600">{pass.description}</td>
+                    <td className="px-6 py-4">
+                      <StatusBadge status={pass.status} />
+                    </td>
+                    <td className="px-6 py-4 text-slate-600">
+                      {pass.price !== undefined ? `${pass.price} ETH` : "Free"}
+                    </td>
+                    <td className="px-6 py-4 text-slate-600">
+                      {pass.currentSupply} / {pass.maxSupply ?? "∞"}
+                    </td>
+                    {canWrite && (
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <button
+                            id={`btn-edit-pass-${pass.id}`}
+                            onClick={() => handleEdit(pass.id)}
+                            disabled={isPending}
+                            className="text-xs text-slate-600 hover:text-violet-600 font-medium transition-colors disabled:opacity-50"
+                            title={`Edit ${pass.name}`}
+                          >
+                            Edit
+                          </button>
+                          <span className="text-slate-300">·</span>
+                          <button
+                            id={`btn-deactivate-pass-${pass.id}`}
+                            onClick={() => handleDeactivate(pass.id)}
+                            disabled={isPending || pass.status === "inactive"}
+                            className="text-xs text-red-500 hover:text-red-700 font-medium transition-colors disabled:opacity-50"
+                            title={`Deactivate ${pass.name}`}
+                          >
+                            Deactivate
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -4,24 +4,28 @@ import { mockGuilds, type Guild } from "@/lib/mock-data";
 import { MOCK_API_SESSION } from "@/lib/auth/session";
 import { assertPermission, PermissionDeniedError } from "@/lib/permissions";
 import { getApiMode } from "@/lib/env";
+import { getGuildRepository } from "@/lib/repositories/factory";
 
 /**
  * GET /api/guilds
  * Accessible to all authenticated roles (guilds:read).
+ * Fetches from the configured repository (mock or durable).
  */
 export async function GET(): Promise<NextResponse> {
   return handleApiError(async () => {
-    const mode = getApiMode();
+    const apiMode = getApiMode();
 
-    if (mode === "live") {
+    if (apiMode === "live") {
       // IntegrationClient doesn't provide guild listing; require implementation in future
       return apiError("Guild listing in live mode is not implemented", 501);
     }
 
     try {
-      return mockGuilds as Guild[];
+      const guildRepository = getGuildRepository();
+      return await guildRepository.getAll();
     } catch (error) {
       console.error("Error fetching guilds:", error);
+      // Fallback to mock data on error
       return mockGuilds as Guild[];
     }
   });
@@ -32,9 +36,9 @@ export async function GET(): Promise<NextResponse> {
  * Requires guilds:write permission (create a guild).
  *
  * ⚠️  In production, resolve the session from the request (JWT / cookie)
- *     instead of using MOCK_SESSION, then assertPermission against it.
+ *     instead of using MOCK_API_SESSION, then assertPermission against it.
  */
-export async function POST(): Promise<NextResponse> {
+export async function POST(request: Request): Promise<NextResponse> {
   try {
     assertPermission(MOCK_API_SESSION, "guilds:write");
   } catch (err) {
@@ -45,16 +49,17 @@ export async function POST(): Promise<NextResponse> {
   }
 
   return handleApiError(async () => {
-    // TODO: implement guild creation logic
-    return { message: "Guild created (stub)" };
+    const body = await request.json();
+    const guildRepository = getGuildRepository();
+    return await guildRepository.create(body);
   });
 }
 
 /**
- * DELETE /api/guilds
- * Requires guilds:write permission (remove a guild).
+ * PATCH /api/guilds?id=...
+ * Requires guilds:write permission.
  */
-export async function DELETE(): Promise<NextResponse> {
+export async function PATCH(request: Request): Promise<NextResponse> {
   try {
     assertPermission(MOCK_API_SESSION, "guilds:write");
   } catch (err) {
@@ -64,8 +69,43 @@ export async function DELETE(): Promise<NextResponse> {
     throw err;
   }
 
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+
+  if (!id) return apiError("Missing guild ID", 400);
+
   return handleApiError(async () => {
-    // TODO: implement guild deletion logic
-    return { message: "Guild deleted (stub)" };
+    const body = await request.json();
+    const guildRepository = getGuildRepository();
+    const updated = await guildRepository.update(id, body);
+    if (!updated) throw new Error("Guild not found or update failed");
+    return updated;
+  });
+}
+
+/**
+ * DELETE /api/guilds?id=...
+ * Requires guilds:write permission (remove a guild).
+ */
+export async function DELETE(request: Request): Promise<NextResponse> {
+  try {
+    assertPermission(MOCK_API_SESSION, "guilds:write");
+  } catch (err) {
+    if (err instanceof PermissionDeniedError) {
+      return apiError(err.message, 403);
+    }
+    throw err;
+  }
+
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+
+  if (!id) return apiError("Missing guild ID", 400);
+
+  return handleApiError(async () => {
+    const guildRepository = getGuildRepository();
+    const success = await guildRepository.delete(id);
+    if (!success) throw new Error("Guild not found or deletion failed");
+    return { success: true };
   });
 }

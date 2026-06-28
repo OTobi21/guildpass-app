@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySignature } from "@guildpass/webhook-utils";
 import { getEnv } from "@/lib/env";
+import { mapWebhookToActivity } from "@/lib/activity/mapper";
 import { activityStorage } from "@/lib/activity/storage";
 import { ActivityEvent, WebhookPayload } from "@/lib/activity/types";
 import { validateWebhookPayload } from "@/lib/activity/validation";
