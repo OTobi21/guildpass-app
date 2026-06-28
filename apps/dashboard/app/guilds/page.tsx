@@ -1,3 +1,5 @@
+"use client";
+
 import DashboardLayout from "@/components/DashboardLayout";
 import { mockGuilds, type Guild as MockGuild } from "@/lib/mock-data";
 import { useEffect, useState } from "react";
