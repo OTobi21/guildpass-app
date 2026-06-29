@@ -27,6 +27,13 @@ export function hasPermission(session: Session, permission: Permission): boolean
   return session.permissions.includes(permission);
 }
 
+/**
+ * Returns true if the session user holds one of the allowed roles.
+ */
+export function hasRole(session: Session, allowedRoles: string[]): boolean {
+  return allowedRoles.includes(session.role);
+}
+
 // ── Named helpers (UI gating) ─────────────────────────────────────────────────
 
 /** Can the user create, edit, or delete passes? */

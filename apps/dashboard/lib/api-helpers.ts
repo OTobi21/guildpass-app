@@ -78,7 +78,7 @@ function newErrorId(): string {
  * operations from transient errors, so it can show an appropriate UI instead of
  * silently falling back to mock data.
  */
-export function apiUnsupported(
+export function apiUnsupportedLegacy(
   message: string
 ): NextResponse<UnsupportedResponse> {
   return NextResponse.json(
