@@ -1,21 +1,12 @@
 import { NextResponse } from "next/server";
 import { apiError, apiValidationError, handleApiError } from "@/lib/api-helpers";
 import { MOCK_API_SESSION } from "@/lib/auth/session";
+import { requireDashboardSession, UnauthorizedError } from "@/lib/auth/server-session";
 import { assertPermission, PermissionDeniedError } from "@/lib/permissions";
 import { getSettingsRepository } from "@/lib/repositories/factory";
 import { validateSettingsPatch } from "@/lib/validation/settings";
+import { recordDashboardActivity } from "@/lib/activity/dashboard";
 
-/**
- * GET /api/settings
- * Returns the typed workspace settings. Requires settings:read (held by every
- * role, including readonly), so the page can hydrate its initial values.
- *
- * PATCH /api/settings
- * Validates and persists supported settings. Requires settings:write.
- *
- * ⚠️  In production, resolve the session from the request (JWT / cookie)
- *     instead of using MOCK_API_SESSION, then assertPermission against it.
- */
 export async function GET(): Promise<NextResponse> {
   try {
     assertPermission(MOCK_API_SESSION, "settings:read");
@@ -32,8 +23,9 @@ export async function GET(): Promise<NextResponse> {
 }
 
 export async function PATCH(request: Request): Promise<NextResponse> {
+  let session;
   try {
-    const session = requireDashboardSession(request);
+    session = requireDashboardSession(request);
     assertPermission(session, "settings:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {
@@ -54,12 +46,18 @@ export async function PATCH(request: Request): Promise<NextResponse> {
     ]);
   }
 
-  const result = validateSettingsPatch(body);
-  if (!result.ok) {
-    return apiValidationError("Invalid settings", result.errors);
+  const validation = validateSettingsPatch(body);
+  if (!validation.ok) {
+    return apiValidationError("Invalid settings", validation.errors);
   }
 
   return handleApiError(async () => {
-    return await getSettingsRepository().update(result.value);
+    const updated = await getSettingsRepository().update(validation.value);
+    await recordDashboardActivity({
+      type: "settings.updated",
+      actor: { id: session!.userId, name: session!.name },
+      description: "Dashboard settings updated",
+    });
+    return updated;
   });
 }
