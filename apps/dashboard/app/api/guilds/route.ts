@@ -1,23 +1,28 @@
 import { NextResponse } from "next/server";
-import { handleApiError, apiError } from "@/lib/api-helpers";
+import {
+  apiError,
+  apiUnsupported,
+  apiValidationError,
+  handleApiError,
+} from "@/lib/api-helpers";
+import type { ApiFieldError } from "@/lib/api-contracts";
 import { mockGuilds, type Guild } from "@/lib/mock-data";
-import { MOCK_API_SESSION } from "@/lib/auth/session";
+import { requireDashboardSession, UnauthorizedError } from "@/lib/auth/server-session";
 import { assertPermission, PermissionDeniedError } from "@/lib/permissions";
 import { getApiMode } from "@/lib/env";
 import { getGuildRepository } from "@/lib/repositories/factory";
+import { recordDashboardActivity } from "@/lib/activity/dashboard";
 
-/**
- * GET /api/guilds
- * Accessible to all authenticated roles (guilds:read).
- * Fetches from the configured repository (mock or durable).
- */
 export async function GET(): Promise<NextResponse> {
   return handleApiError(async () => {
     const apiMode = getApiMode();
 
     if (apiMode === "live") {
-      // IntegrationClient doesn't provide guild listing; require implementation in future
-      return apiError("Guild listing in live mode is not implemented", 501);
+      return apiUnsupported(
+        "guilds.list",
+        apiMode,
+        "Guild listing in live mode is not implemented"
+      );
     }
 
     try {
@@ -25,94 +30,147 @@ export async function GET(): Promise<NextResponse> {
       return await guildRepository.getAll();
     } catch (error) {
       console.error("Error fetching guilds:", error);
-      // Fallback to mock data on error
       return mockGuilds as Guild[];
     }
   });
 }
 
-/**
- * POST /api/guilds
- * Requires guilds:write permission (create a guild).
- *
- * ⚠️  In production, resolve the session from the request (JWT / cookie)
- *     instead of using MOCK_SESSION, then assertPermission against it.
- */
-export async function POST(): Promise<NextResponse> {
+export async function POST(request: Request): Promise<NextResponse> {
+  let session;
   try {
-    assertPermission(MOCK_API_SESSION, "guilds:write");
+    session = requireDashboardSession(request);
+    assertPermission(session, "guilds:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {
       return apiError(err.message, 403);
+    }
+    if (err instanceof UnauthorizedError) {
+      return apiError(err.message, 401);
     }
     throw err;
   }
 
   return handleApiError(async () => {
-    // TODO: implement guild creation logic
-    return { message: "Guild created (stub)" };
+    const body = await request.json();
+    const errors = validateGuildCreate(body);
+    if (errors.length > 0) {
+      return apiValidationError("Invalid guild payload", errors);
+    }
+
+    const guildRepository = getGuildRepository();
+    const created = await guildRepository.create({
+      name: body.name.trim(),
+      description: body.description.trim(),
+      memberCount: body.memberCount ?? 0,
+      passCount: body.passCount ?? 0,
+    });
+    await recordDashboardActivity({
+      type: "guild.created",
+      entity: { type: "guild", id: created.id, name: created.name },
+      actor: { id: session!.userId, name: session!.name },
+    });
+    return created;
   });
 }
 
-/**
- * DELETE /api/guilds
- * Requires guilds:write permission (remove a guild).
- */
-export async function DELETE(): Promise<NextResponse> {
+export async function PATCH(request: Request): Promise<NextResponse> {
+  let session;
   try {
-    assertPermission(MOCK_API_SESSION, "guilds:write");
+    session = requireDashboardSession(request);
+    assertPermission(session, "guilds:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {
       return apiError(err.message, 403);
     }
+    if (err instanceof UnauthorizedError) {
+      return apiError(err.message, 401);
+    }
     throw err;
   }
 
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+
+  if (!id) {
+    return apiValidationError("Missing guild ID", [
+      { field: "id", message: "id query parameter is required" },
+    ]);
+  }
+
   return handleApiError(async () => {
-    // TODO: implement guild deletion logic
-    return { message: "Guild deleted (stub)" };
+    const body = await request.json();
+    const guildRepository = getGuildRepository();
+    const updated = await guildRepository.update(id, body);
+    if (!updated) throw new Error("Guild not found or update failed");
+    await recordDashboardActivity({
+      type: "guild.updated",
+      entity: { type: "guild", id: updated.id, name: updated.name },
+      actor: { id: session!.userId, name: session!.name },
+    });
+    return updated;
   });
 }
 
-/**
- * POST /api/guilds
- * Requires guilds:write permission (create a guild).
- *
- * ⚠️  In production, resolve the session from the request (JWT / cookie)
- *     instead of using MOCK_SESSION, then assertPermission against it.
- */
-export async function POST(): Promise<NextResponse> {
+export async function DELETE(request: Request): Promise<NextResponse> {
+  let session;
   try {
-    assertPermission(MOCK_API_SESSION, "guilds:write");
+    session = requireDashboardSession(request);
+    assertPermission(session, "guilds:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {
       return apiError(err.message, 403);
     }
+    if (err instanceof UnauthorizedError) {
+      return apiError(err.message, 401);
+    }
     throw err;
   }
 
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+
+  if (!id) {
+    return apiValidationError("Missing guild ID", [
+      { field: "id", message: "id query parameter is required" },
+    ]);
+  }
+
   return handleApiError(async () => {
-    // TODO: implement guild creation logic
-    return { message: "Guild created (stub)" };
+    const guildRepository = getGuildRepository();
+    const guild = await guildRepository.getById(id);
+    if (!guild) throw new Error("Guild not found or deletion failed");
+    const success = await guildRepository.delete(id);
+    if (!success) throw new Error("Guild not found or deletion failed");
+    await recordDashboardActivity({
+      type: "guild.deleted",
+      entity: { type: "guild", id: guild.id, name: guild.name },
+      actor: { id: session!.userId, name: session!.name },
+    });
+    return { success: true };
   });
 }
 
-/**
- * DELETE /api/guilds
- * Requires guilds:write permission (remove a guild).
- */
-export async function DELETE(): Promise<NextResponse> {
-  try {
-    assertPermission(MOCK_API_SESSION, "guilds:write");
-  } catch (err) {
-    if (err instanceof PermissionDeniedError) {
-      return apiError(err.message, 403);
-    }
-    throw err;
+function validateGuildCreate(body: any): ApiFieldError[] {
+  const errors: ApiFieldError[] = [];
+
+  if (typeof body?.name !== "string" || body.name.trim().length === 0) {
+    errors.push({ field: "name", message: "name is required" });
   }
 
-  return handleApiError(async () => {
-    // TODO: implement guild deletion logic
-    return { message: "Guild deleted (stub)" };
-  });
+  if (
+    typeof body?.description !== "string" ||
+    body.description.trim().length === 0
+  ) {
+    errors.push({ field: "description", message: "description is required" });
+  }
+
+  if (body?.memberCount !== undefined && !Number.isInteger(body.memberCount)) {
+    errors.push({ field: "memberCount", message: "memberCount must be an integer" });
+  }
+
+  if (body?.passCount !== undefined && !Number.isInteger(body.passCount)) {
+    errors.push({ field: "passCount", message: "passCount must be an integer" });
+  }
+
+  return errors;
 }

@@ -27,6 +27,13 @@ export function hasPermission(session: Session, permission: Permission): boolean
   return session.permissions.includes(permission);
 }
 
+/**
+ * Returns true if the session user holds one of the allowed roles.
+ */
+export function hasRole(session: Session, allowedRoles: string[]): boolean {
+  return allowedRoles.includes(session.role);
+}
+
 // ── Named helpers (UI gating) ─────────────────────────────────────────────────
 
 /** Can the user create, edit, or delete passes? */
@@ -54,6 +61,8 @@ export const canEditSettings = (session: Session): boolean =>
 export class PermissionDeniedError extends Error {
   readonly permission: Permission;
   readonly statusCode = 403;
+  /** Marks this as a client-safe error so handleApiError exposes its message. */
+  readonly expose = true as const;
 
   constructor(permission: Permission) {
     super(`Permission denied: "${permission}" is required for this action.`);

@@ -1,4 +1,5 @@
-import { ActivityEvent, ActivityEventType } from "@guildpass/integration-client";
+import { ActivityEvent } from "@guildpass/integration-client";
+import { ActivityQuery, ActivityQueryResult } from "../activity/query";
 import { activityStorage } from "../activity/storage";
 
 export interface ActivityStats {
@@ -32,42 +33,17 @@ class ActivityService {
   /**
    * Get all activity events, optionally filtered by type and capped by limit.
    */
-  async getEvents(options?: { limit?: number; type?: ActivityEventType }): Promise<ActivityEvent[]> {
-    let events = await activityStorage.getEvents() as ActivityEvent[];
-
-    if (options?.type) {
-      events = events.filter(e => e.type === options.type);
+  async getEvents(options?: ActivityQuery): Promise<ActivityEvent[]> {
+    if (!options) {
+      return activityStorage.getEvents();
     }
 
-    if (options?.limit) {
-      events = events.slice(0, options.limit);
-    }
-
-    return events;
+    const result = await this.queryEvents(options);
+    return result.events;
   }
 
-  /**
-   * Get only events that arrived after the given ISO timestamp.
-   *
-   * Used by the UI for incremental polling — the client passes the timestamp
-   * of the most recent event it already knows about and receives only newer
-   * events, avoiding re-fetching the entire feed on every tick.
-   */
-  async getEventsSince(since: string, options?: { limit?: number; type?: ActivityEventType }): Promise<ActivityEvent[]> {
-    let events = await activityStorage.getEvents() as ActivityEvent[];
-
-    // Filter events strictly newer than `since`
-    events = events.filter(e => e.timestamp > since);
-
-    if (options?.type) {
-      events = events.filter(e => e.type === options.type);
-    }
-
-    if (options?.limit) {
-      events = events.slice(0, options.limit);
-    }
-
-    return events;
+  async queryEvents(options?: ActivityQuery): Promise<ActivityQueryResult> {
+    return activityStorage.queryEvents(options);
   }
 
   /**
