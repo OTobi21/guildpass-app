@@ -30,6 +30,8 @@ export function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | n
         timestamp,
         entity: {
           type: "member",
+          id: data.id ?? data.wallet ?? "unknown",
+          name: displayValue(data.name, data.wallet, data.id),
           id: entityId(data.id, data.wallet, data.name),
          name: typeof data.name === "string" ? data.name : undefined,
         },
@@ -53,6 +55,8 @@ export function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | n
         timestamp,
         entity: {
           type: "member",
+          id: data.id ?? data.wallet ?? "unknown",
+          name: displayValue(data.name, data.wallet, data.id),
           id: entityId(data.id, data.wallet, data.name),
          name: typeof data.name === "string" ? data.name : undefined,
         },

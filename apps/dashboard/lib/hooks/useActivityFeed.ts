@@ -4,13 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type ActivityEvent } from "@guildpass/integration-client";
 import { type ActivityQuery } from "@/lib/activity/query";
 import { type Activity, fetchActivity, generateMockActivity } from "@/lib/mock-data";
-
-const REFRESH_MS =
-  Number(process.env.NEXT_PUBLIC_ACTIVITY_REFRESH_MS) || 15_000;
+import { getActivityRefreshConfig, type ActivityRefreshConfig } from "@/lib/env";
 
 interface UseActivityFeedOptions extends Omit<ActivityQuery, "cursor"> {
   /** How many events to request per page. */
   limit?: number;
+  /** Override the polling interval from env. Pass 0 to disable auto-polling. */
+  refreshIntervalMs?: number;
   autoRefresh?: boolean;
   simulate?: boolean;
 }
@@ -152,6 +152,19 @@ export function useActivityFeed({
     }
   }, [appendEvents, loadingMore, nextCursor, query]);
 
+  /**
+   * Manual refresh handler — exposed to the UI so operators can force a poll
+   * without waiting for the next interval tick.
+   */
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await poll();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [poll]);
+
   useEffect(() => {
     seenIds.current.clear();
     setEvents([]);
@@ -159,6 +172,9 @@ export function useActivityFeed({
     setTotal(0);
     setLoading(true);
     refresh();
+
+    // If polling is disabled (interval = 0), don't set up the timer
+    if (pollInterval <= 0) return;
 
     const tick = () => {
       // Pause polling while the tab is hidden to avoid wasted requests

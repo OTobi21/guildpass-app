@@ -12,6 +12,31 @@
   DATABASE_URL: process.env.DATABASE_URL,
 };
 
+/**
+ * Activity refresh configuration.
+ *
+ * All values can be controlled via environment variables so operators can tune
+ * polling behaviour without code changes.
+ */
+export interface ActivityRefreshConfig {
+  /** Polling interval in milliseconds. Set to 0 to disable auto-polling. */
+  intervalMs: number;
+  /** Maximum number of events to keep in the client feed. */
+  maxEvents: number;
+}
+
+const DEFAULT_REFRESH_MS = 15_000; // 15 seconds
+const DEFAULT_MAX_EVENTS = 500;
+
+export function getActivityRefreshConfig(): ActivityRefreshConfig {
+  const intervalMs =
+    Number(process.env.NEXT_PUBLIC_ACTIVITY_REFRESH_MS) || DEFAULT_REFRESH_MS;
+  const maxEvents =
+    Number(process.env.NEXT_PUBLIC_ACTIVITY_MAX_EVENTS) || DEFAULT_MAX_EVENTS;
+
+  return { intervalMs, maxEvents };
+}
+
 export function getApiMode(): "mock" | "live" {
   const m = (process.env.DASHBOARD_API_MODE || env.DASHBOARD_API_MODE)?.toLowerCase();
   return m === "live" ? "live" : "mock";
