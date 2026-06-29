@@ -8,7 +8,7 @@ import {
 } from "@/lib/api-helpers";
 import { NotFoundError } from "@/lib/api-errors";
 import { mockPasses, type Pass } from "@/lib/mock-data";
-import { MOCK_API_SESSION } from "@/lib/auth/session";
+import { requireDashboardSession, UnauthorizedError } from "@/lib/auth/server-session";
 import { assertPermission, PermissionDeniedError } from "@/lib/permissions";
 import { getApiMode } from "@/lib/env";
 import { getPassRepository } from "@/lib/repositories/factory";
@@ -50,16 +50,17 @@ export async function GET(): Promise<NextResponse> {
 /**
  * POST /api/passes
  * Requires passes:write permission.
- *
- * ⚠️  In production, resolve the session from the request (JWT / cookie)
- *     instead of using MOCK_API_SESSION, then assertPermission against it.
  */
 export async function POST(request: Request): Promise<NextResponse> {
   try {
-    assertPermission(MOCK_API_SESSION, "passes:write");
+    const session = requireDashboardSession(request);
+    assertPermission(session, "passes:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {
       return apiError(err.message, 403);
+    }
+    if (err instanceof UnauthorizedError) {
+      return apiError(err.message, 401);
     }
     throw err;
   }
@@ -88,10 +89,14 @@ export async function POST(request: Request): Promise<NextResponse> {
  */
 export async function PATCH(request: Request): Promise<NextResponse> {
   try {
-    assertPermission(MOCK_API_SESSION, "passes:write");
+    const session = requireDashboardSession(request);
+    assertPermission(session, "passes:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {
       return apiError(err.message, 403);
+    }
+    if (err instanceof UnauthorizedError) {
+      return apiError(err.message, 401);
     }
     throw err;
   }
@@ -131,10 +136,14 @@ export async function PATCH(request: Request): Promise<NextResponse> {
  */
 export async function DELETE(request: Request): Promise<NextResponse> {
   try {
-    assertPermission(MOCK_API_SESSION, "passes:write");
+    const session = requireDashboardSession(request);
+    assertPermission(session, "passes:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {
       return apiError(err.message, 403);
+    }
+    if (err instanceof UnauthorizedError) {
+      return apiError(err.message, 401);
     }
     throw err;
   }

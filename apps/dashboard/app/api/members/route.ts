@@ -8,7 +8,7 @@ import {
 } from "@/lib/api-helpers";
 import { NotFoundError } from "@/lib/api-errors";
 import { mockMembers, type Member } from "@/lib/mock-data";
-import { MOCK_API_SESSION } from "@/lib/auth/session";
+import { requireDashboardSession, UnauthorizedError } from "@/lib/auth/server-session";
 import { assertPermission, PermissionDeniedError } from "@/lib/permissions";
 import { IntegrationClient } from "@guildpass/integration-client";
 import { getEnv, getApiMode } from "@/lib/env";
@@ -103,16 +103,17 @@ export async function GET(request: Request): Promise<NextResponse> {
 /**
  * POST /api/members
  * Requires members:write permission (invite / create a member).
- *
- * ⚠️  In production, resolve the session from the request (JWT / cookie)
- *     instead of using MOCK_API_SESSION, then assertPermission against it.
  */
 export async function POST(request: Request): Promise<NextResponse> {
   try {
-    assertPermission(MOCK_API_SESSION, "members:write");
+    const session = requireDashboardSession(request);
+    assertPermission(session, "members:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {
       return apiError(err.message, 403);
+    }
+    if (err instanceof UnauthorizedError) {
+      return apiError(err.message, 401);
     }
     throw err;
   }
@@ -141,10 +142,14 @@ export async function POST(request: Request): Promise<NextResponse> {
  */
 export async function PATCH(request: Request): Promise<NextResponse> {
   try {
-    assertPermission(MOCK_API_SESSION, "members:write");
+    const session = requireDashboardSession(request);
+    assertPermission(session, "members:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {
       return apiError(err.message, 403);
+    }
+    if (err instanceof UnauthorizedError) {
+      return apiError(err.message, 401);
     }
     throw err;
   }
@@ -184,10 +189,14 @@ export async function PATCH(request: Request): Promise<NextResponse> {
  */
 export async function DELETE(request: Request): Promise<NextResponse> {
   try {
-    assertPermission(MOCK_API_SESSION, "members:write");
+    const session = requireDashboardSession(request);
+    assertPermission(session, "members:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {
       return apiError(err.message, 403);
+    }
+    if (err instanceof UnauthorizedError) {
+      return apiError(err.message, 401);
     }
     throw err;
   }

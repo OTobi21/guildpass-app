@@ -33,10 +33,14 @@ export async function GET(): Promise<NextResponse> {
 
 export async function PATCH(request: Request): Promise<NextResponse> {
   try {
-    assertPermission(MOCK_API_SESSION, "settings:write");
+    const session = requireDashboardSession(request);
+    assertPermission(session, "settings:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {
       return apiError(err.message, 403);
+    }
+    if (err instanceof UnauthorizedError) {
+      return apiError(err.message, 401);
     }
     throw err;
   }
