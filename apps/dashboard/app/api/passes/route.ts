@@ -5,13 +5,17 @@ import {
   apiValidationError,
   handleApiError,
 } from "@/lib/api-helpers";
-import type { ApiFieldError } from "@/lib/api-contracts";
 import { NotFoundError } from "@/lib/api-errors";
 import { mockPasses, type Pass } from "@/lib/mock-data";
 import { MOCK_API_SESSION } from "@/lib/auth/session";
 import { assertPermission, PermissionDeniedError } from "@/lib/permissions";
 import { getApiMode } from "@/lib/env";
 import { getPassRepository } from "@/lib/repositories/factory";
+import {
+  malformedPayloadError,
+  validatePassCreatePayload,
+  validatePassUpdatePayload,
+} from "@/lib/validation/mutations";
 
 /**
  * GET /api/passes
@@ -60,21 +64,20 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   return handleApiError(async () => {
-    const body = await request.json();
-    const errors = validatePassCreate(body);
-    if (errors.length > 0) {
-      return apiValidationError("Invalid pass payload", errors);
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return apiValidationError("Invalid pass payload", malformedPayloadError());
+    }
+
+    const validation = validatePassCreatePayload(body);
+    if (!validation.valid) {
+      return apiValidationError("Invalid pass payload", validation.errors);
     }
 
     const passRepository = getPassRepository();
-    return await passRepository.create({
-      name: body.name.trim(),
-      description: body.description.trim(),
-      status: body.status ?? "draft",
-      price: body.price,
-      maxSupply: body.maxSupply ?? null,
-      currentSupply: body.currentSupply ?? 0,
-    });
+    return await passRepository.create(validation.data);
   });
 }
 
@@ -102,9 +105,20 @@ export async function PATCH(request: Request): Promise<NextResponse> {
   }
 
   return handleApiError(async () => {
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return apiValidationError("Invalid pass payload", malformedPayloadError());
+    }
+
+    const validation = validatePassUpdatePayload(body);
+    if (!validation.valid) {
+      return apiValidationError("Invalid pass payload", validation.errors);
+    }
+
     const passRepository = getPassRepository();
-    const updated = await passRepository.update(id, body);
+    const updated = await passRepository.update(id, validation.data);
     if (!updated) throw new NotFoundError("Pass not found.");
     return updated;
   });
@@ -139,34 +153,4 @@ export async function DELETE(request: Request): Promise<NextResponse> {
     if (!success) throw new NotFoundError("Pass not found.");
     return { success: true };
   });
-}
-
-function validatePassCreate(body: any): ApiFieldError[] {
-  const errors: ApiFieldError[] = [];
-
-  if (typeof body?.name !== "string" || body.name.trim().length === 0) {
-    errors.push({ field: "name", message: "name is required" });
-  }
-
-  if (
-    typeof body?.description !== "string" ||
-    body.description.trim().length === 0
-  ) {
-    errors.push({ field: "description", message: "description is required" });
-  }
-
-  if (body?.price !== undefined && typeof body.price !== "number") {
-    errors.push({ field: "price", message: "price must be a number" });
-  }
-
-  if (body?.maxSupply !== undefined && body.maxSupply !== null) {
-    if (!Number.isInteger(body.maxSupply) || body.maxSupply < 0) {
-      errors.push({
-        field: "maxSupply",
-        message: "maxSupply must be a non-negative integer",
-      });
-    }
-  }
-
-  return errors;
 }

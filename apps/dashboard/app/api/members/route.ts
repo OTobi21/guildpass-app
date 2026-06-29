@@ -6,7 +6,6 @@ import {
   apiValidationError,
   handleApiError,
 } from "@/lib/api-helpers";
-import type { ApiFieldError } from "@/lib/api-contracts";
 import { NotFoundError } from "@/lib/api-errors";
 import { mockMembers, type Member } from "@/lib/mock-data";
 import { MOCK_API_SESSION } from "@/lib/auth/session";
@@ -14,6 +13,11 @@ import { assertPermission, PermissionDeniedError } from "@/lib/permissions";
 import { IntegrationClient } from "@guildpass/integration-client";
 import { getEnv, getApiMode } from "@/lib/env";
 import { getMemberRepository } from "@/lib/repositories/factory";
+import {
+  malformedPayloadError,
+  validateMemberCreatePayload,
+  validateMemberUpdatePayload,
+} from "@/lib/validation/mutations";
 
 /**
  * GET /api/members
@@ -114,22 +118,20 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   return handleApiError(async () => {
-    const body = await request.json();
-    const errors = validateMemberCreate(body);
-    if (errors.length > 0) {
-      return apiValidationError("Invalid member payload", errors);
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return apiValidationError("Invalid member payload", malformedPayloadError());
+    }
+
+    const validation = validateMemberCreatePayload(body);
+    if (!validation.valid) {
+      return apiValidationError("Invalid member payload", validation.errors);
     }
 
     const memberRepository = getMemberRepository();
-    const now = new Date().toISOString();
-    return await memberRepository.create({
-      name: body.name.trim(),
-      wallet: body.wallet.trim(),
-      status: body.status ?? "pending",
-      roles: Array.isArray(body.roles) ? body.roles : [],
-      joinedAt: body.joinedAt ?? now,
-      lastActive: body.lastActive ?? now,
-    });
+    return await memberRepository.create(validation.data);
   });
 }
 
@@ -157,9 +159,20 @@ export async function PATCH(request: Request): Promise<NextResponse> {
   }
 
   return handleApiError(async () => {
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return apiValidationError("Invalid member payload", malformedPayloadError());
+    }
+
+    const validation = validateMemberUpdatePayload(body);
+    if (!validation.valid) {
+      return apiValidationError("Invalid member payload", validation.errors);
+    }
+
     const memberRepository = getMemberRepository();
-    const updated = await memberRepository.update(id, body);
+    const updated = await memberRepository.update(id, validation.data);
     if (!updated) throw new NotFoundError("Member not found.");
     return updated;
   });
@@ -194,22 +207,4 @@ export async function DELETE(request: Request): Promise<NextResponse> {
     if (!success) throw new NotFoundError("Member not found.");
     return { success: true };
   });
-}
-
-function validateMemberCreate(body: any): ApiFieldError[] {
-  const errors: ApiFieldError[] = [];
-
-  if (typeof body?.name !== "string" || body.name.trim().length === 0) {
-    errors.push({ field: "name", message: "name is required" });
-  }
-
-  if (typeof body?.wallet !== "string" || body.wallet.trim().length === 0) {
-    errors.push({ field: "wallet", message: "wallet is required" });
-  }
-
-  if (body?.roles !== undefined && !Array.isArray(body.roles)) {
-    errors.push({ field: "roles", message: "roles must be an array" });
-  }
-
-  return errors;
 }
