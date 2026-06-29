@@ -5,6 +5,11 @@ import { MOCK_API_SESSION } from "@/lib/auth/session";
 import { assertPermission, PermissionDeniedError } from "@/lib/permissions";
 import { getApiMode } from "@/lib/env";
 import { getPassRepository } from "@/lib/repositories/factory";
+import {
+  malformedPayloadError,
+  validatePassCreatePayload,
+  validatePassUpdatePayload,
+} from "@/lib/validation/mutations";
 
 /**
  * GET /api/passes
@@ -49,9 +54,20 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   return handleApiError(async () => {
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ errors: malformedPayloadError() }, { status: 400 });
+    }
+
+    const validation = validatePassCreatePayload(body);
+    if (!validation.valid) {
+      return NextResponse.json({ errors: validation.errors }, { status: 400 });
+    }
+
     const passRepository = getPassRepository();
-    return await passRepository.create(body);
+    return await passRepository.create(validation.data);
   });
 }
 
@@ -75,9 +91,20 @@ export async function PATCH(request: Request): Promise<NextResponse> {
   if (!id) return apiError("Missing pass ID", 400);
 
   return handleApiError(async () => {
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ errors: malformedPayloadError() }, { status: 400 });
+    }
+
+    const validation = validatePassUpdatePayload(body);
+    if (!validation.valid) {
+      return NextResponse.json({ errors: validation.errors }, { status: 400 });
+    }
+
     const passRepository = getPassRepository();
-    const updated = await passRepository.update(id, body);
+    const updated = await passRepository.update(id, validation.data);
     if (!updated) throw new Error("Pass not found or update failed");
     return updated;
   });
