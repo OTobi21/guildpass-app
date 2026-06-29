@@ -21,6 +21,7 @@
 import type { Session } from "./session";
 import { MOCK_API_SESSION } from "./session";
 import { getApiMode } from "@/lib/env";
+import { cookies, headers } from "next/headers";
 
 // ── Error types ──────────────────────────────────────────────────────────────
 
@@ -103,4 +104,31 @@ export function getDashboardSession(_request: Request): Session {
  */
 export function requireDashboardSession(request: Request): Session {
   return getDashboardSession(request);
+}
+/**
+ * Resolves the active session within Next.js Server Components or Layouts.
+ *
+ * Mock mode: Returns MOCK_SESSION (matching UI's MOCK_ACTIVE_ROLE).
+ * Live mode: Parses incoming headers or cookies to validate real JWT/SIWE sessions.
+ */
+export async function getServerComponentSession(): Promise<Session> {
+  const mode = getApiMode();
+
+  if (mode === "live") {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("guildpass_session")?.value;
+    const headerList = await headers();
+    const authHeader = headerList.get("authorization");
+
+    if (!token && !authHeader) {
+      throw new UnauthorizedError("No session cookie or authorization header present.");
+    }
+
+    // TODO: Wire up real validation logic here (JWT decode, next-auth session verification, etc.)
+    throw new UnauthorizedError("Live Server Component session resolution is not yet implemented.");
+  }
+
+  // Fallback to the active UI mock role for clean local development workflows
+  const { MOCK_SESSION } = await import("./session");
+  return MOCK_SESSION;
 }
