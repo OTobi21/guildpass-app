@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { handleApiError, apiError, apiUnsupported } from "@/lib/api-helpers";
 import {
   apiError,
   apiUnsupported,
@@ -17,18 +16,13 @@ import {
   validatePassCreatePayload,
   validatePassUpdatePayload,
 } from "@/lib/validation/mutations";
+import { recordDashboardActivity } from "@/lib/activity/dashboard";
 
-/**
- * GET /api/passes
- * Accessible to all authenticated roles (passes:read).
- * Fetches from the configured repository (mock or durable).
- */
 export async function GET(): Promise<NextResponse> {
   return handleApiError(async () => {
     const apiMode = getApiMode();
 
     if (apiMode === "live") {
-      // IntegrationClient currently does not expose pass listing.
       return apiUnsupported(
         "passes.list",
         apiMode,
@@ -41,19 +35,15 @@ export async function GET(): Promise<NextResponse> {
       return await passRepository.getAll();
     } catch (error) {
       console.error("Error fetching passes:", error);
-      // Fallback to mock data on error
       return mockPasses as Pass[];
     }
   });
 }
 
-/**
- * POST /api/passes
- * Requires passes:write permission.
- */
 export async function POST(request: Request): Promise<NextResponse> {
+  let session;
   try {
-    const session = requireDashboardSession(request);
+    session = requireDashboardSession(request);
     assertPermission(session, "passes:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {
@@ -79,17 +69,20 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     const passRepository = getPassRepository();
-    return await passRepository.create(validation.data);
+    const created = await passRepository.create(validation.data);
+    await recordDashboardActivity({
+      type: "pass.created",
+      entity: { type: "pass", id: created.id, name: created.name },
+      actor: { id: session!.userId, name: session!.name },
+    });
+    return created;
   });
 }
 
-/**
- * PATCH /api/passes?id=...
- * Requires passes:write permission.
- */
 export async function PATCH(request: Request): Promise<NextResponse> {
+  let session;
   try {
-    const session = requireDashboardSession(request);
+    session = requireDashboardSession(request);
     assertPermission(session, "passes:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {
@@ -126,17 +119,19 @@ export async function PATCH(request: Request): Promise<NextResponse> {
     const passRepository = getPassRepository();
     const updated = await passRepository.update(id, validation.data);
     if (!updated) throw new NotFoundError("Pass not found.");
+    await recordDashboardActivity({
+      type: "pass.updated",
+      entity: { type: "pass", id: updated.id, name: updated.name },
+      actor: { id: session!.userId, name: session!.name },
+    });
     return updated;
   });
 }
 
-/**
- * DELETE /api/passes?id=...
- * Requires passes:write permission.
- */
 export async function DELETE(request: Request): Promise<NextResponse> {
+  let session;
   try {
-    const session = requireDashboardSession(request);
+    session = requireDashboardSession(request);
     assertPermission(session, "passes:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {
@@ -159,8 +154,15 @@ export async function DELETE(request: Request): Promise<NextResponse> {
 
   return handleApiError(async () => {
     const passRepository = getPassRepository();
+    const pass = await passRepository.getById(id);
+    if (!pass) throw new NotFoundError("Pass not found.");
     const success = await passRepository.delete(id);
     if (!success) throw new NotFoundError("Pass not found.");
+    await recordDashboardActivity({
+      type: "pass.deleted",
+      entity: { type: "pass", id: pass.id, name: pass.name },
+      actor: { id: session!.userId, name: session!.name },
+    });
     return { success: true };
   });
 }

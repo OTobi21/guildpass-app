@@ -37,6 +37,7 @@ export type ActivityEventType =
   | "member.roles_changed"
   | "access.granted"
   | "access.revoked"
+  | "settings.updated"
   | "verification.completed"
   | "webhook.received";
 

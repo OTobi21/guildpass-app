@@ -1,0 +1,61 @@
+import type { ActivityEvent, ActivityEventType, ActivityEventEntity, ActivityEventSeverity } from "./types";
+import { getActivityRepository } from "@/lib/repositories/factory";
+import type { Session } from "@/lib/auth/session";
+
+interface DashboardActivityInput {
+  type: ActivityEventType;
+  entity?: ActivityEventEntity;
+  actor?: { id?: string; name?: string; wallet?: string };
+  description?: string;
+  severity?: ActivityEventSeverity;
+}
+
+function safeDescription(type: ActivityEventType, entity?: ActivityEventEntity): string {
+  const name = entity?.name ?? entity?.id ?? "unknown";
+  switch (type) {
+    case "pass.created":
+      return `Created pass: ${name}`;
+    case "pass.updated":
+      return `Updated pass: ${name}`;
+    case "pass.deleted":
+      return `Deactivated pass: ${name}`;
+    case "guild.created":
+      return `Created guild: ${name}`;
+    case "guild.updated":
+      return `Updated guild: ${name}`;
+    case "guild.deleted":
+      return `Deleted guild: ${name}`;
+    case "member.joined":
+      return `Added member: ${name}`;
+    case "member.left":
+      return `Removed member: ${name}`;
+    case "member.roles_changed":
+      return `Changed roles for: ${name}`;
+    case "settings.updated":
+      return "Settings updated";
+    default:
+      return `${type} — ${name}`;
+  }
+}
+
+function actorFromSession(session?: Session): { id?: string; name?: string; wallet?: string } {
+  if (!session) return { name: "Admin" };
+  return { id: session.userId, name: session.name };
+}
+
+export async function recordDashboardActivity(
+  input: DashboardActivityInput
+): Promise<ActivityEvent> {
+  return getActivityRepository().append({
+    type: input.type,
+    source: "dashboard",
+    severity: input.severity ?? "info",
+    actor: input.actor ?? { name: "Admin" },
+    description: input.description ?? safeDescription(input.type, input.entity),
+    entity: input.entity,
+  });
+}
+
+export function actorFromRequest(session?: Session): { id?: string; name?: string; wallet?: string } {
+  return actorFromSession(session);
+}
