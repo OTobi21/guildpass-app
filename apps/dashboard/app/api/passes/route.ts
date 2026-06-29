@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { handleApiError, apiError } from "@/lib/api-helpers";
+import { handleApiError, apiError, apiUnsupported } from "@/lib/api-helpers";
 import { mockPasses, type Pass } from "@/lib/mock-data";
 import { MOCK_API_SESSION } from "@/lib/auth/session";
 import { assertPermission, PermissionDeniedError } from "@/lib/permissions";
@@ -17,7 +17,7 @@ export async function GET(): Promise<NextResponse> {
 
     if (apiMode === "live") {
       // IntegrationClient currently does not expose pass listing.
-      return apiError("Pass listing in live mode is not implemented", 501);
+      return apiUnsupported("Pass listing in live mode is not implemented");
     }
 
     try {

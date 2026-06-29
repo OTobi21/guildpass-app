@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { handleApiError, apiError } from "@/lib/api-helpers";
+import { handleApiError, apiError, apiUnsupported } from "@/lib/api-helpers";
 import { mockMembers, type Member } from "@/lib/mock-data";
 import { MOCK_API_SESSION } from "@/lib/auth/session";
 import { assertPermission, PermissionDeniedError } from "@/lib/permissions";
@@ -65,7 +65,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         }
 
         // We don't support listing all members via the core API here.
-        return apiError("Live mode requires a lookup (wallet or discordUserId)", 501);
+        return apiUnsupported("Live mode requires a lookup (wallet or discordUserId)");
       } catch (err) {
         console.error("Error fetching membership in live mode:", err);
         return apiError("Failed to retrieve membership from core", 502);

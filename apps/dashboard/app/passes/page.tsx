@@ -17,39 +17,53 @@
 
 import DashboardLayout from "@/components/DashboardLayout";
 import StatusBadge from "@/components/StatusBadge";
+import UnsupportedBanner from "@/components/UnsupportedBanner";
 import { mockPasses, type Pass as MockPass } from "@/lib/mock-data";
 import { useSession } from "@/lib/hooks/useSession";
 import { canManagePasses } from "@/lib/permissions";
 import { useEffect, useState, useRef } from "react";
 import { useOptimisticMutation } from "@/lib/hooks/useOptimisticMutation";
+import { fetchList } from "@/lib/fetch-list";
+import { getClientApiMode } from "@/lib/client-env";
 
 export default function PassesPage() {
   const session = useSession();
   const canWrite = canManagePasses(session);
   const [passes, setPasses] = useState<MockPass[]>(mockPasses);
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
+  const [listState, setListState] = useState<"loading" | "loaded" | "unsupported" | "error">("loading");
   const previousPassesRef = useRef<MockPass[]>(passes);
+  const apiMode = getClientApiMode();
 
   useEffect(() => {
     let mounted = true;
     async function load() {
-      try {
-        const res = await fetch("/api/passes");
-        if (!res.ok) throw new Error("fetch failed");
-        const data = await res.json();
-        if (mounted && Array.isArray(data)) {
-          setPasses(data);
-          previousPassesRef.current = data;
-        }
-      } catch (err) {
-        console.warn("Falling back to mock passes:", err);
+      setListState("loading");
+
+      const result = await fetchList<MockPass>("/api/passes");
+
+      if (!mounted) return;
+
+      if (result.ok) {
+        setPasses(result.data);
+        previousPassesRef.current = result.data;
+        setListState("loaded");
+      } else if (result.code === "UNSUPPORTED_IN_LIVE_MODE") {
+        setListState("unsupported");
+      } else if (apiMode === "live") {
+        // Network/server error in live mode — show error state
+        setListState("error");
+      } else {
+        // Mock/dev mode — fall back to mock data
+        console.warn("[PassesPage] Fetch failed, using mock data:", result.message);
+        setListState("loaded");
       }
     }
     load();
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [apiMode]);
 
   const updateMutation = useOptimisticMutation<MockPass, { id: string; data: Partial<MockPass> }>({
     mutationFn: async ({ id, data }) => {
@@ -107,14 +121,30 @@ export default function PassesPage() {
 
   return (
     <DashboardLayout title="Passes" session={session}>
+      {/* ── Unsupported banner (live mode) ──────────────────────────────── */}
+      {listState === "unsupported" && (
+        <UnsupportedBanner resource="passes" />
+      )}
+
+      {/* ── Error banner (live mode network error) ─────────────────────── */}
+      {listState === "error" && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 my-4">
+          <p className="text-sm text-red-700">
+            Failed to load passes from the server. Check your API configuration and try again.
+          </p>
+        </div>
+      )}
+
       {/* ── Page header ─────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-6">
         <p className="text-sm text-slate-500">
-          {passes.length} pass{passes.length !== 1 ? "es" : ""} total
+          {listState === "unsupported"
+            ? "Pass listing unavailable in live mode"
+            : `${passes.length} pass${passes.length !== 1 ? "es" : ""} total`}
         </p>
 
         {/* Create button — write roles only */}
-        {canWrite && (
+        {canWrite && listState !== "unsupported" && (
           <button
             id="btn-create-pass"
             className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
@@ -125,6 +155,7 @@ export default function PassesPage() {
       </div>
 
       {/* ── Passes table ────────────────────────────────────────────────── */}
+      {listState !== "unsupported" && (
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -192,6 +223,7 @@ export default function PassesPage() {
           </table>
         </div>
       </div>
+      )}
     </DashboardLayout>
   );
 }

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 
+export type UnsupportedResponse = { error: string; code: "UNSUPPORTED_IN_LIVE_MODE" };
+export type ApiErrorResponse = { error: string };
+
 export function apiResponse<T>(data: T, init?: ResponseInit): NextResponse<T> {
   return NextResponse.json(data, init);
 }
@@ -7,8 +10,23 @@ export function apiResponse<T>(data: T, init?: ResponseInit): NextResponse<T> {
 export function apiError(
   message: string,
   status: number = 500
-): NextResponse<{ error: string }> {
+): NextResponse<ApiErrorResponse> {
   return NextResponse.json({ error: message }, { status });
+}
+
+/**
+ * Returns a 501 response indicating that this endpoint is not available in live mode.
+ * The client-side code checks for the `code` field to distinguish unsupported live
+ * operations from transient errors, so it can show an appropriate UI instead of
+ * silently falling back to mock data.
+ */
+export function apiUnsupported(
+  message: string
+): NextResponse<UnsupportedResponse> {
+  return NextResponse.json(
+    { error: message, code: "UNSUPPORTED_IN_LIVE_MODE" },
+    { status: 501 }
+  );
 }
 
 export async function handleApiError<T>(
