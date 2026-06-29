@@ -1,9 +1,12 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { WEBHOOK_FIXTURES, FIXED_UNIX, makeWebhookPayload } from "./fixtures.ts";
-import type { ActivityEvent } from "../lib/activity/types.ts";
-import type { WebhookPayload } from "../lib/activity/types.ts";
-
+import { WEBHOOK_FIXTURES, FIXED_UNIX, makeWebhookPayload } from "./fixtures";
+import type { ActivityEvent } from "../lib/activity/types";
+import type { WebhookPayload } from "../lib/activity/types";
+function displayValue(...values: Array<unknown>): string {
+  const value = values.find((item) => typeof item === "string" && item.length > 0);
+  return typeof value === "string" ? value : "Unknown";
+}
 /**
  * webhook-mapper.test.ts
  *
@@ -32,9 +35,13 @@ function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | null {
         source: "webhook",
         severity: "info",
         actor: { name: data.name, wallet: data.wallet },
-        description: `New member joined: ${data.name || data.wallet}`,
+        description: `New member joined: ${displayValue(data.name, data.wallet, data.id)}`,
         timestamp,
-        entity: { type: "member", id: data.id, name: data.name },
+        entity: {
+          type: "member",
+          id: data.id ?? data.wallet ?? "unknown",
+          name: displayValue(data.name, data.wallet, data.id),
+        },
         metadata: data,
       };
     case "membership.updated":
@@ -44,9 +51,13 @@ function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | null {
         source: "webhook",
         severity: "info",
         actor: { name: data.name, wallet: data.wallet },
-        description: `Member ${data.name || data.wallet} updated`,
+        description: `Member ${displayValue(data.name, data.wallet, data.id)} updated`,
         timestamp,
-        entity: { type: "member", id: data.id, name: data.name },
+        entity: {
+          type: "member",
+          id: data.id ?? data.wallet ?? "unknown",
+          name: displayValue(data.name, data.wallet, data.id),
+        },
         metadata: data,
       };
     case "pass.created":
@@ -56,9 +67,13 @@ function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | null {
         source: "webhook",
         severity: "info",
         actor: { name: "Admin" },
-        description: `New pass created: ${data.name}`,
+        description: `New pass created: ${displayValue(data.name, data.id)}`,
         timestamp,
-        entity: { type: "pass", id: data.id, name: data.name },
+        entity: {
+          type: "pass",
+          id: data.id ?? "unknown",
+          name: displayValue(data.name, data.id),
+        },
         metadata: data,
       };
     case "pass.updated":
@@ -68,9 +83,13 @@ function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | null {
         source: "webhook",
         severity: "info",
         actor: { name: "Admin" },
-        description: `Pass updated: ${data.name}`,
+        description: `Pass updated: ${displayValue(data.name, data.id)}`,
         timestamp,
-        entity: { type: "pass", id: data.id, name: data.name },
+        entity: {
+          type: "pass",
+          id: data.id ?? "unknown",
+          name: displayValue(data.name, data.id),
+        },
         metadata: data,
       };
     case "guild.updated":
@@ -80,9 +99,13 @@ function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | null {
         source: "webhook",
         severity: "info",
         actor: { name: "Admin" },
-        description: `Guild settings updated: ${data.name}`,
+        description: `Guild settings updated: ${displayValue(data.name, data.id)}`,
         timestamp,
-        entity: { type: "guild", id: data.id, name: data.name },
+        entity: {
+          type: "guild",
+          id: data.id ?? "unknown",
+          name: displayValue(data.name, data.id),
+        },
         metadata: data,
       };
     case "verification.completed":
@@ -92,9 +115,9 @@ function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | null {
         source: "webhook",
         severity: "info",
         actor: { wallet: data.wallet },
-        description: `Verification completed for ${data.wallet}`,
+        description: `Verification completed for ${displayValue(data.wallet)}`,
         timestamp,
-        entity: { type: "verification", id: data.wallet },
+        entity: { type: "verification", id: data.wallet ?? "unknown" },
         metadata: data,
       };
     default:
@@ -143,7 +166,7 @@ describe("mapWebhookToActivity", () => {
 
     test("description includes member name when present", () => {
       assert.ok(
-        result.description.includes(payload.data.name),
+        result.description.includes(payload.data.name ?? payload.data.wallet ?? payload.data.id ?? ""),
         `description "${result.description}" should include member name`
       );
     });
@@ -185,7 +208,7 @@ describe("mapWebhookToActivity", () => {
     });
 
     test("description includes member name when present", () => {
-      assert.ok(result.description.includes(payload.data.name));
+      assert.ok(result.description.includes(payload.data.name ?? payload.data.wallet ?? payload.data.id ?? ""));
     });
 
     test("falls back to wallet in description when name is absent", () => {
@@ -266,7 +289,7 @@ describe("mapWebhookToActivity", () => {
     });
 
     test("description includes guild name", () => {
-      assert.ok(result.description.includes(payload.data.name));
+      assert.ok(result.description.includes(payload.data.name ?? payload.data.id ?? ""));
     });
 
     test("entity type is 'guild'", () => {
@@ -292,7 +315,7 @@ describe("mapWebhookToActivity", () => {
     });
 
     test("description includes wallet address", () => {
-      assert.ok(result.description.includes(payload.data.wallet));
+      assert.ok(result.description.includes(payload.data.wallet ?? ""));
     });
 
     test("entity type is 'verification' and id equals wallet", () => {

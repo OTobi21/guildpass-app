@@ -3,6 +3,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import LastUpdated from "@/components/LastUpdated";
 import { useActivityFeed } from "@/lib/hooks/useActivityFeed";
+import { getActivityRefreshConfig } from "@/lib/env";
 import { type ActivityEventType } from "@guildpass/integration-client";
 
 const TYPE_ICON: Record<ActivityEventType, string> = {
@@ -40,13 +41,40 @@ const TYPE_COLOR: Record<ActivityEventType, string> = {
 };
 
 export default function ActivityPage() {
-  const { events, lastUpdated, loading } = useActivityFeed();
+  const { events, lastUpdated, loading, refresh, refreshing } = useActivityFeed();
+  const { intervalMs } = getActivityRefreshConfig();
 
   return (
     <DashboardLayout title="Activity">
       <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-slate-500">{events.length} event{events.length !== 1 ? "s" : ""}</p>
-        <LastUpdated date={lastUpdated} />
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-slate-500">
+            {events.length} event{events.length !== 1 ? "s" : ""}
+          </p>
+          <LastUpdated date={lastUpdated} autoRefresh={intervalMs > 0} />
+        </div>
+
+        <button
+          onClick={refresh}
+          disabled={refreshing}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+          title="Fetch the latest activity events"
+        >
+          <svg
+            className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182"
+            />
+          </svg>
+          {refreshing ? "Refreshing…" : "Refresh"}
+        </button>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl">

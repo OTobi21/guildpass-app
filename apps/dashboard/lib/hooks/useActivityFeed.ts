@@ -3,19 +3,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type ActivityEvent } from "@guildpass/integration-client";
 import { type Activity, fetchActivity, generateMockActivity } from "@/lib/mock-data";
-
-const REFRESH_MS =
-  Number(process.env.NEXT_PUBLIC_ACTIVITY_REFRESH_MS) || 15_000;
+import { getActivityRefreshConfig, type ActivityRefreshConfig } from "@/lib/env";
 
 interface UseActivityFeedOptions {
   /** How many events to surface at most (default: unlimited). */
   limit?: number;
+  /** Override the polling interval from env. Pass 0 to disable auto-polling. */
+  refreshIntervalMs?: number;
 }
 
 interface UseActivityFeedResult {
   events: ActivityEvent[];
   lastUpdated: Date | null;
   loading: boolean;
+  /** Manually trigger a refresh — fetches new events and merges them. */
+  refresh: () => Promise<void>;
+  /** Whether a manual refresh is currently in-flight. */
+  refreshing: boolean;
 }
 
 const TYPE_MAP: Record<Activity["type"], ActivityEvent["type"]> = {
@@ -47,24 +51,48 @@ function toActivityEvent(activity: Activity): ActivityEvent {
   };
 }
 
-export function useActivityFeed({ limit }: UseActivityFeedOptions = {}): UseActivityFeedResult {
+export function useActivityFeed({
+  limit,
+  refreshIntervalMs,
+}: UseActivityFeedOptions = {}): UseActivityFeedResult {
   const [events, setEvents]           = useState<ActivityEvent[]>([]);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [loading, setLoading]         = useState(true);
+  const [refreshing, setRefreshing]   = useState(false);
   const seenIds                       = useRef(new Set<string>());
 
-  const mergeEvents = useCallback((incoming: ActivityEvent[]) => {
-    const fresh = incoming.filter((e) => !seenIds.current.has(e.id));
-    if (fresh.length === 0) return;
-    fresh.forEach((e) => seenIds.current.add(e.id));
-    setEvents((prev) => {
-      const merged = [...fresh, ...prev].sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      );
-      return limit ? merged.slice(0, limit) : merged;
-    });
-    setLastUpdated(new Date());
-  }, [limit]);
+  // Resolve config — prefer explicit option over env default
+  const config: ActivityRefreshConfig = getActivityRefreshConfig();
+  const pollInterval =
+    refreshIntervalMs !== undefined ? refreshIntervalMs : config.intervalMs;
+
+  /**
+   * Merge incoming events into state, guarding against duplicate IDs.
+   * Events are sorted newest-first and capped by `limit` or maxEvents.
+   */
+  const mergeEvents = useCallback(
+    (incoming: ActivityEvent[]) => {
+      if (incoming.length === 0) return;
+
+      // Skip events we have already seen
+      const fresh = incoming.filter((e) => !seenIds.current.has(e.id));
+      if (fresh.length === 0) return;
+
+      fresh.forEach((e) => seenIds.current.add(e.id));
+
+      setEvents((prev) => {
+        const merged = [...fresh, ...prev].sort(
+          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        );
+
+        // Cap the stored events to avoid unbounded memory growth
+        const max = limit ?? config.maxEvents;
+        return max > 0 ? merged.slice(0, max) : merged;
+      });
+      setLastUpdated(new Date());
+    },
+    [limit, config.maxEvents],
+  );
 
   /** Single poll tick: fetch real/mock data + inject one simulated event in mock mode. */
   const poll = useCallback(async () => {
@@ -81,23 +109,39 @@ export function useActivityFeed({ limit }: UseActivityFeedOptions = {}): UseActi
     }
   }, [mergeEvents]);
 
+  /**
+   * Manual refresh handler — exposed to the UI so operators can force a poll
+   * without waiting for the next interval tick.
+   */
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await poll();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [poll]);
+
   useEffect(() => {
     // Initial load
     poll();
+
+    // If polling is disabled (interval = 0), don't set up the timer
+    if (pollInterval <= 0) return;
 
     const tick = () => {
       // Pause polling while the tab is hidden to avoid wasted requests
       if (document.visibilityState === "visible") poll();
     };
 
-    const id = setInterval(tick, REFRESH_MS);
+    const id = setInterval(tick, pollInterval);
     document.addEventListener("visibilitychange", tick);
 
     return () => {
       clearInterval(id);
       document.removeEventListener("visibilitychange", tick);
     };
-  }, [poll]);
+  }, [poll, pollInterval]);
 
-  return { events, lastUpdated, loading };
+  return { events, lastUpdated, loading, refresh, refreshing };
 }

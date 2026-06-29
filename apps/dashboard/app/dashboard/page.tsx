@@ -5,11 +5,13 @@ import StatCard from "@/components/StatCard";
 import StatusBadge from "@/components/StatusBadge";
 import LastUpdated from "@/components/LastUpdated";
 import { useActivityFeed } from "@/lib/hooks/useActivityFeed";
+import { getActivityRefreshConfig } from "@/lib/env";
 import { mockPasses, mockGuilds, mockMembers, type Member as MockMember, type Pass as MockPass, type Guild as MockGuild } from "@/lib/mock-data";
 import { useEffect, useState } from "react";
 
 export default function DashboardPage() {
-  const { events, lastUpdated } = useActivityFeed({ limit: 5 });
+  const { events, lastUpdated, refresh, refreshing } = useActivityFeed({ limit: 5 });
+  const { intervalMs } = getActivityRefreshConfig();
 
   const [passesCount, setPassesCount] = useState<number>(mockPasses.length);
   const [guildsCount, setGuildsCount] = useState<number>(mockGuilds.length);
@@ -60,8 +62,31 @@ export default function DashboardPage() {
         {/* ── Live recent activity ────────────────────────────────── */}
         <div className="bg-white border border-slate-200 rounded-xl p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-slate-800">Recent Activity</h2>
-            <LastUpdated date={lastUpdated} />
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-semibold text-slate-800">Recent Activity</h2>
+              <LastUpdated date={lastUpdated} autoRefresh={intervalMs > 0} />
+            </div>
+            <button
+              onClick={refresh}
+              disabled={refreshing}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 bg-white border border-slate-200 rounded-md hover:bg-slate-50 hover:border-slate-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Refresh recent activity"
+            >
+              <svg
+                className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182"
+                />
+              </svg>
+              {refreshing ? "…" : "Refresh"}
+            </button>
           </div>
           <ul className="space-y-4">
             {events.slice(0, 5).map((activity) => (

@@ -26,8 +26,8 @@ export function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | n
         timestamp,
         entity: {
           type: "member",
-          id: data.id,
-          name: data.name,
+          id: data.id ?? data.wallet ?? "unknown",
+          name: displayValue(data.name, data.wallet, data.id),
         },
         metadata: data,
       };
@@ -49,8 +49,8 @@ export function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | n
         timestamp,
         entity: {
           type: "member",
-          id: data.id,
-          name: data.name,
+          id: data.id ?? data.wallet ?? "unknown",
+          name: displayValue(data.name, data.wallet, data.id),
         },
         metadata: data,
       };
@@ -71,8 +71,8 @@ export function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | n
         timestamp,
         entity: {
           type: "pass",
-          id: data.id,
-          name: data.name,
+          id: data.id ?? "unknown",
+          name: displayValue(data.name, data.id),
         },
         metadata: data,
       };
@@ -93,8 +93,8 @@ export function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | n
         timestamp,
         entity: {
           type: "pass",
-          id: data.id,
-          name: data.name,
+          id: data.id ?? "unknown",
+          name: displayValue(data.name, data.id),
         },
         metadata: data,
       };
@@ -115,8 +115,8 @@ export function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | n
         timestamp,
         entity: {
           type: "guild",
-          id: data.id,
-          name: data.name,
+          id: data.id ?? "unknown",
+          name: displayValue(data.name, data.id),
         },
         metadata: data,
       };
@@ -135,7 +135,7 @@ export function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | n
         timestamp,
         entity: {
           type: "verification",
-          id: data.wallet,
+          id: data.wallet ?? "unknown",
         },
         metadata: data,
       };

@@ -5,9 +5,9 @@
  * Fixtures are plain objects — no side-effects, no imports from app code.
  */
 
-import type { ActivityEvent } from "../lib/activity/types.ts";
-import type { Session } from "../lib/auth/session.ts";
-import type { WebhookPayload } from "../lib/activity/types.ts";
+import type { ActivityEvent } from "../lib/activity/types";
+import type { Session } from "../lib/auth/session";
+import type { WebhookPayload } from "../lib/activity/types";
 
 export const FIXED_TIMESTAMP = "2025-01-15T12:00:00.000Z";
 export const FIXED_UNIX = Math.floor(new Date(FIXED_TIMESTAMP).getTime() / 1000);
