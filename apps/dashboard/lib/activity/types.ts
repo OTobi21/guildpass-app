@@ -4,6 +4,7 @@ export type {
   ActivityEventSeverity,
   ActivityEventEntity,
   ActivityEvent,
+  ActivityChange,
 } from "@guildpass/integration-client";
 
 export {
