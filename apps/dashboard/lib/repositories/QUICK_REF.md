@@ -4,14 +4,13 @@
 
 ```typescript
 // Import
-import { apiResponse } from "@/lib/api-helpers";
 import { getPassRepository } from "@/lib/repositories/factory";
 
 // Fetch all
 export async function GET() {
   const repo = getPassRepository();
   const passes = await repo.getAll();
-  return apiResponse(passes);
+  return NextResponse.json(passes);
 }
 
 // Fetch by ID

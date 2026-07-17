@@ -11,7 +11,3 @@ apps/*/dist
 apps/docs/.docusaurus
 apps/docs/build
 .idea
-
-# Next.js build output
-.next/
-apps/dashboard/.next/

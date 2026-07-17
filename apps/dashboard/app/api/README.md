@@ -29,7 +29,7 @@ Create a new route at `app/api/webhooks/guildpass/route.ts`:
 
 ```typescript
 import { verifySignature } from "@guildpass/webhook-utils";
-import { apiError, apiResponse } from "@/lib/api-helpers";
+import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   // 1. Get raw body (CRITICAL: before parsing)
@@ -39,7 +39,10 @@ export async function POST(request: Request) {
   const signature = request.headers.get('x-guildpass-signature');
   
   if (!signature) {
-    return apiError('Missing signature', 401);
+    return NextResponse.json(
+      { error: 'Missing signature' },
+      { status: 401 }
+    );
   }
   
   // 3. Verify signature
@@ -52,7 +55,10 @@ export async function POST(request: Request) {
   
   if (!result.valid) {
     console.error('Webhook verification failed:', result.error);
-    return apiError('Invalid signature', 401);
+    return NextResponse.json(
+      { error: 'Invalid signature' },
+      { status: 401 }
+    );
   }
   
   // 4. Process the verified webhook
@@ -68,7 +74,7 @@ export async function POST(request: Request) {
     // Add more event types as needed
   }
   
-  return apiResponse({ received: true });
+  return NextResponse.json({ received: true });
 }
 ```
 

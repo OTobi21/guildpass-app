@@ -11,13 +11,12 @@ describe("GET /api/activity", () => {
     const body = await response.json();
 
     assert.equal(response.status, 200);
-    assert.equal(body.ok, true);
-    assert.ok(Array.isArray(body.data.events));
-    assert.ok(body.data.events.length <= 2);
+    assert.ok(Array.isArray(body.events));
+    assert.ok(body.events.length <= 2);
     assert.ok(
-      body.data.events.every((event: { type: string }) => event.type === "member.joined")
+      body.events.every((event: { type: string }) => event.type === "member.joined")
     );
-    assert.ok("nextCursor" in body.data);
+    assert.ok("nextCursor" in body);
   });
 
   test("returns 400 with field errors for invalid query parameters", async () => {
@@ -27,10 +26,8 @@ describe("GET /api/activity", () => {
     const body = await response.json();
 
     assert.equal(response.status, 400);
-    assert.equal(body.ok, false);
-    assert.equal(body.code, "VALIDATION_ERROR");
     assert.deepEqual(
-      body.fields.map((error: { field: string }) => error.field),
+      body.errors.map((error: { field: string }) => error.field),
       ["limit", "type", "from"]
     );
   });

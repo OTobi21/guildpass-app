@@ -5,7 +5,6 @@
 
 import type { Pass, Guild, Member } from "../mock-data";
 import type { ActivityEvent } from "@/lib/activity/types";
-import type { DashboardSettings } from "../settings";
 
 /**
  * Repository for managing passes.
@@ -133,20 +132,6 @@ export interface IActivityRepository {
 }
 
 /**
- * Repository for workspace dashboard settings.
- *
- * Settings are a single workspace-level document (not a keyed collection), so
- * the contract is a simple get / partial-update pair rather than CRUD.
- */
-export interface ISettingsRepository {
-  /** Read the current dashboard settings. */
-  get(): Promise<DashboardSettings>;
-
-  /** Merge a partial update into the stored settings and return the result. */
-  update(patch: Partial<DashboardSettings>): Promise<DashboardSettings>;
-}
-
-/**
  * Factory for creating repository instances based on storage mode.
  */
 export interface IRepositoryFactory {
@@ -154,5 +139,4 @@ export interface IRepositoryFactory {
   guildRepository(): IGuildRepository;
   memberRepository(): IMemberRepository;
   activityRepository(): IActivityRepository;
-  settingsRepository(): ISettingsRepository;
 }

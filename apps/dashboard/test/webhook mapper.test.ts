@@ -23,9 +23,7 @@ import type { WebhookPayload } from "../lib/activity/types.ts";
 function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | null {
   const { type, data, id, created } = payload;
   const timestamp = new Date(created * 1000).toISOString();
-  const name = stringField(data, "name");
-  const wallet = stringField(data, "wallet");
-  const entityId = stringField(data, "id") ?? wallet ?? id;
+  const entityId = data.id ?? data.wallet ?? id;
 
   switch (type) {
     case "membership.created":
@@ -34,10 +32,10 @@ function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | null {
         type: "member.joined",
         source: "webhook",
         severity: "info",
-        actor: { name, wallet },
-        description: `New member joined: ${name || wallet}`,
+        actor: { name: data.name, wallet: data.wallet },
+        description: `New member joined: ${data.name || data.wallet}`,
         timestamp,
-        entity: { type: "member", id: entityId, name },
+        entity: { type: "member", id: entityId, name: data.name },
         metadata: data,
       };
     case "membership.updated":
@@ -46,10 +44,10 @@ function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | null {
         type: "member.left",
         source: "webhook",
         severity: "info",
-        actor: { name, wallet },
-        description: `Member ${name || wallet} updated`,
+        actor: { name: data.name, wallet: data.wallet },
+        description: `Member ${data.name || data.wallet} updated`,
         timestamp,
-        entity: { type: "member", id: entityId, name },
+        entity: { type: "member", id: entityId, name: data.name },
         metadata: data,
       };
     case "pass.created":
@@ -59,9 +57,9 @@ function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | null {
         source: "webhook",
         severity: "info",
         actor: { name: "Admin" },
-        description: `New pass created: ${name}`,
+        description: `New pass created: ${data.name}`,
         timestamp,
-        entity: { type: "pass", id: entityId, name },
+        entity: { type: "pass", id: entityId, name: data.name },
         metadata: data,
       };
     case "pass.updated":
@@ -71,9 +69,9 @@ function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | null {
         source: "webhook",
         severity: "info",
         actor: { name: "Admin" },
-        description: `Pass updated: ${name}`,
+        description: `Pass updated: ${data.name}`,
         timestamp,
-        entity: { type: "pass", id: entityId, name },
+        entity: { type: "pass", id: entityId, name: data.name },
         metadata: data,
       };
     case "guild.updated":
@@ -83,9 +81,9 @@ function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | null {
         source: "webhook",
         severity: "info",
         actor: { name: "Admin" },
-        description: `Guild settings updated: ${name}`,
+        description: `Guild settings updated: ${data.name}`,
         timestamp,
-        entity: { type: "guild", id: entityId, name },
+        entity: { type: "guild", id: entityId, name: data.name },
         metadata: data,
       };
     case "verification.completed":
@@ -94,8 +92,8 @@ function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | null {
         type: "verification.completed",
         source: "webhook",
         severity: "info",
-        actor: { wallet },
-        description: `Verification completed for ${wallet}`,
+        actor: { wallet: data.wallet },
+        description: `Verification completed for ${data.wallet}`,
         timestamp,
         entity: { type: "verification", id: entityId },
         metadata: data,
@@ -103,14 +101,6 @@ function mapWebhookToActivity(payload: WebhookPayload): ActivityEvent | null {
     default:
       return null;
   }
-}
-
-function stringField(
-  data: Record<string, unknown>,
-  field: string
-): string | undefined {
-  const value = data[field];
-  return typeof value === "string" ? value : undefined;
 }
 
 // ── Shared field assertions ────────────────────────────────────────────────────
@@ -154,7 +144,7 @@ describe("mapWebhookToActivity", () => {
 
     test("description includes member name when present", () => {
       assert.ok(
-        result.description.includes(requiredStringField(payload.data, "name")),
+        result.description.includes(payload.data.name!),
         `description "${result.description}" should include member name`
       );
     });
@@ -196,7 +186,7 @@ describe("mapWebhookToActivity", () => {
     });
 
     test("description includes member name when present", () => {
-      assert.ok(result.description.includes(requiredStringField(payload.data, "name")));
+      assert.ok(result.description.includes(payload.data.name!));
     });
 
     test("falls back to wallet in description when name is absent", () => {
@@ -228,7 +218,7 @@ describe("mapWebhookToActivity", () => {
     });
 
     test("description includes pass name", () => {
-      assert.ok(result.description.includes(requiredStringField(payload.data, "name")));
+      assert.ok(result.description.includes(payload.data.name!));
     });
 
     test("entity type is 'pass'", () => {
@@ -255,7 +245,7 @@ describe("mapWebhookToActivity", () => {
     });
 
     test("description includes pass name", () => {
-      assert.ok(result.description.includes(requiredStringField(payload.data, "name")));
+      assert.ok(result.description.includes(payload.data.name!));
     });
   });
 
@@ -277,7 +267,7 @@ describe("mapWebhookToActivity", () => {
     });
 
     test("description includes guild name", () => {
-      assert.ok(result.description.includes(requiredStringField(payload.data, "name")));
+      assert.ok(result.description.includes(payload.data.name!));
     });
 
     test("entity type is 'guild'", () => {
@@ -303,7 +293,7 @@ describe("mapWebhookToActivity", () => {
     });
 
     test("description includes wallet address", () => {
-      assert.ok(result.description.includes(requiredStringField(payload.data, "wallet")));
+      assert.ok(result.description.includes(payload.data.wallet!));
     });
 
     test("entity type is 'verification' and id equals wallet", () => {
@@ -346,12 +336,3 @@ describe("mapWebhookToActivity", () => {
     });
   });
 });
-
-function requiredStringField(
-  data: Record<string, unknown>,
-  field: string
-): string {
-  const value = stringField(data, field);
-  assert.ok(value, `${field} should be a string`);
-  return value;
-}

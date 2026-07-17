@@ -1,23 +1,11 @@
 import { NextResponse } from "next/server";
-import {
-  apiError,
-  apiResponse,
-  apiUnsupported,
-  apiValidationError,
-  handleApiError,
-} from "@/lib/api-helpers";
-import { NotFoundError } from "@/lib/api-errors";
+import { handleApiError, apiError } from "@/lib/api-helpers";
 import { mockMembers, type Member } from "@/lib/mock-data";
-import { requireDashboardSession, UnauthorizedError } from "@/lib/auth/server-session";
+import { MOCK_API_SESSION } from "@/lib/auth/session";
 import { assertPermission, PermissionDeniedError } from "@/lib/permissions";
 import { IntegrationClient } from "@guildpass/integration-client";
 import { getEnv, getApiMode } from "@/lib/env";
 import { getMemberRepository } from "@/lib/repositories/factory";
-import {
-  malformedPayloadError,
-  validateMemberCreatePayload,
-  validateMemberUpdatePayload,
-} from "@/lib/validation/mutations";
 
 /**
  * GET /api/members
@@ -48,7 +36,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       try {
         if (wallet) {
           const m = await client.getMembershipByWallet(wallet);
-          if (!m) return apiResponse([], { status: 200 });
+          if (!m) return NextResponse.json([], { status: 200 });
           const mapped: Member = {
             id: m.userId,
             wallet: m.wallet ?? "",
@@ -58,12 +46,12 @@ export async function GET(request: Request): Promise<NextResponse> {
             joinedAt: m.updatedAt,
             lastActive: m.updatedAt,
           };
-          return apiResponse([mapped]);
+          return NextResponse.json([mapped]);
         }
 
         if (discordUserId) {
           const m = await client.getMembershipByDiscordUser(discordUserId);
-          if (!m) return apiResponse([], { status: 200 });
+          if (!m) return NextResponse.json([], { status: 200 });
           const mapped: Member = {
             id: m.userId,
             wallet: m.wallet ?? "",
@@ -73,15 +61,11 @@ export async function GET(request: Request): Promise<NextResponse> {
             joinedAt: m.updatedAt,
             lastActive: m.updatedAt,
           };
-          return apiResponse([mapped]);
+          return NextResponse.json([mapped]);
         }
 
         // We don't support listing all members via the core API here.
-        return apiUnsupported(
-          "members.list",
-          apiMode,
-          "Live mode requires a lookup (wallet or discordUserId)"
-        );
+        return apiError("Live mode requires a lookup (wallet or discordUserId)", 501);
       } catch (err) {
         console.error("Error fetching membership in live mode:", err);
         return apiError("Failed to retrieve membership from core", 502);
@@ -91,11 +75,11 @@ export async function GET(request: Request): Promise<NextResponse> {
     // Mock mode — return all members from configured repository
     try {
       const memberRepository = getMemberRepository();
-      return apiResponse(await memberRepository.getAll());
+      return NextResponse.json(await memberRepository.getAll());
     } catch (error) {
       console.error("Error fetching members:", error);
       // Fallback to mock data on error
-      return apiResponse(mockMembers as Member[]);
+      return NextResponse.json(mockMembers as Member[]);
     }
   });
 }
@@ -103,36 +87,24 @@ export async function GET(request: Request): Promise<NextResponse> {
 /**
  * POST /api/members
  * Requires members:write permission (invite / create a member).
+ *
+ * ⚠️  In production, resolve the session from the request (JWT / cookie)
+ *     instead of using MOCK_API_SESSION, then assertPermission against it.
  */
 export async function POST(request: Request): Promise<NextResponse> {
   try {
-    const session = requireDashboardSession(request);
-    assertPermission(session, "members:write");
+    assertPermission(MOCK_API_SESSION, "members:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {
       return apiError(err.message, 403);
-    }
-    if (err instanceof UnauthorizedError) {
-      return apiError(err.message, 401);
     }
     throw err;
   }
 
   return handleApiError(async () => {
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return apiValidationError("Invalid member payload", malformedPayloadError());
-    }
-
-    const validation = validateMemberCreatePayload(body);
-    if (!validation.valid) {
-      return apiValidationError("Invalid member payload", validation.errors);
-    }
-
+    const body = await request.json();
     const memberRepository = getMemberRepository();
-    return await memberRepository.create(validation.data);
+    return await memberRepository.create(body);
   });
 }
 
@@ -142,14 +114,10 @@ export async function POST(request: Request): Promise<NextResponse> {
  */
 export async function PATCH(request: Request): Promise<NextResponse> {
   try {
-    const session = requireDashboardSession(request);
-    assertPermission(session, "members:write");
+    assertPermission(MOCK_API_SESSION, "members:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {
       return apiError(err.message, 403);
-    }
-    if (err instanceof UnauthorizedError) {
-      return apiError(err.message, 401);
     }
     throw err;
   }
@@ -157,28 +125,13 @@ export async function PATCH(request: Request): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
-  if (!id) {
-    return apiValidationError("Missing member ID", [
-      { field: "id", message: "id query parameter is required" },
-    ]);
-  }
+  if (!id) return apiError("Missing member ID", 400);
 
   return handleApiError(async () => {
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return apiValidationError("Invalid member payload", malformedPayloadError());
-    }
-
-    const validation = validateMemberUpdatePayload(body);
-    if (!validation.valid) {
-      return apiValidationError("Invalid member payload", validation.errors);
-    }
-
+    const body = await request.json();
     const memberRepository = getMemberRepository();
-    const updated = await memberRepository.update(id, validation.data);
-    if (!updated) throw new NotFoundError("Member not found.");
+    const updated = await memberRepository.update(id, body);
+    if (!updated) throw new Error("Member not found or update failed");
     return updated;
   });
 }
@@ -189,14 +142,10 @@ export async function PATCH(request: Request): Promise<NextResponse> {
  */
 export async function DELETE(request: Request): Promise<NextResponse> {
   try {
-    const session = requireDashboardSession(request);
-    assertPermission(session, "members:write");
+    assertPermission(MOCK_API_SESSION, "members:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {
       return apiError(err.message, 403);
-    }
-    if (err instanceof UnauthorizedError) {
-      return apiError(err.message, 401);
     }
     throw err;
   }
@@ -204,16 +153,12 @@ export async function DELETE(request: Request): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
-  if (!id) {
-    return apiValidationError("Missing member ID", [
-      { field: "id", message: "id query parameter is required" },
-    ]);
-  }
+  if (!id) return apiError("Missing member ID", 400);
 
   return handleApiError(async () => {
     const memberRepository = getMemberRepository();
     const success = await memberRepository.delete(id);
-    if (!success) throw new NotFoundError("Member not found.");
+    if (!success) throw new Error("Member not found or deletion failed");
     return { success: true };
   });
 }
