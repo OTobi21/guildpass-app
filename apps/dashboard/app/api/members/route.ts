@@ -13,6 +13,7 @@ import { assertPermission, PermissionDeniedError } from "@/lib/permissions";
 import { IntegrationClient } from "@guildpass/integration-client";
 import { getEnv, getApiMode } from "@/lib/env";
 import { getMemberRepository } from "@/lib/repositories/factory";
+import { getSessionStore } from "@/lib/auth/server-session";
 import {
   malformedPayloadError,
   validateMemberCreatePayload,
@@ -106,7 +107,7 @@ export async function GET(request: Request): Promise<NextResponse> {
  */
 export async function POST(request: Request): Promise<NextResponse> {
   try {
-    const session = requireDashboardSession(request);
+    const session = await requireDashboardSession(request);
     assertPermission(session, "members:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {
@@ -142,7 +143,7 @@ export async function POST(request: Request): Promise<NextResponse> {
  */
 export async function PATCH(request: Request): Promise<NextResponse> {
   try {
-    const session = requireDashboardSession(request);
+    const session = await requireDashboardSession(request);
     assertPermission(session, "members:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {
@@ -177,6 +178,25 @@ export async function PATCH(request: Request): Promise<NextResponse> {
     }
 
     const memberRepository = getMemberRepository();
+
+    // If the update changes the member's roles, invalidate their sessions
+    // so that stale access tokens reflect the new permissions within the
+    // bounded access-token lifetime (15 min).
+    if (validation.data.roles !== undefined) {
+      const existing = await memberRepository.getById(id);
+      if (existing) {
+        const oldRoles = (existing.roles ?? []).sort().join(",");
+        const newRoles = (validation.data.roles ?? []).sort().join(",");
+        if (oldRoles !== newRoles) {
+          // Invalidate all existing sessions for this member.
+          // In production, you'd map the member ID to a userId. For now,
+          // we invalidate by member ID directly.
+          const sessionStore = getSessionStore();
+          await sessionStore.invalidateUserSessions(id);
+        }
+      }
+    }
+
     const updated = await memberRepository.update(id, validation.data);
     if (!updated) throw new NotFoundError("Member not found.");
     return updated;
@@ -189,7 +209,7 @@ export async function PATCH(request: Request): Promise<NextResponse> {
  */
 export async function DELETE(request: Request): Promise<NextResponse> {
   try {
-    const session = requireDashboardSession(request);
+    const session = await requireDashboardSession(request);
     assertPermission(session, "members:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {

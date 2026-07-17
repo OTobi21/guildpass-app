@@ -52,7 +52,7 @@ export async function GET(): Promise<NextResponse> {
  */
 export async function POST(request: Request): Promise<NextResponse> {
   try {
-    const session = requireDashboardSession(request);
+    const session = await requireDashboardSession(request);
     assertPermission(session, "passes:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {
@@ -88,7 +88,7 @@ export async function POST(request: Request): Promise<NextResponse> {
  */
 export async function PATCH(request: Request): Promise<NextResponse> {
   try {
-    const session = requireDashboardSession(request);
+    const session = await requireDashboardSession(request);
     assertPermission(session, "passes:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {
@@ -135,7 +135,7 @@ export async function PATCH(request: Request): Promise<NextResponse> {
  */
 export async function DELETE(request: Request): Promise<NextResponse> {
   try {
-    const session = requireDashboardSession(request);
+    const session = await requireDashboardSession(request);
     assertPermission(session, "passes:write");
   } catch (err) {
     if (err instanceof PermissionDeniedError) {
