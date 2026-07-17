@@ -37,8 +37,10 @@ export type ActivityEventType =
   | "member.roles_changed"
   | "access.granted"
   | "access.revoked"
+  | "settings.updated"
   | "verification.completed"
-  | "webhook.received";
+  | "webhook.received"
+  | "activity.permission_denied";
 
 export type ActivityEventSource = "dashboard" | "webhook" | "core_api";
 
@@ -51,26 +53,10 @@ export type ActivityEventEntity = {
 };
 
 /**
- * A single field-level change recorded in an activity event's audit diff.
- * `before` and `after` hold the pre- and post-mutation values respectively —
- * both may be undefined if the field was absent before or removed after.
+ * The current schema version for ActivityEvent.
+ * Bump this when adding/removing/renaming fields on ActivityEvent.
  */
-export type ActivityChange = {
-  field: string;
-  before: unknown;
-  after: unknown;
-};
-
-/**
- * Fields that MUST NOT appear in an audit diff under any circumstances.
- * Add future write-only secrets (e.g. apiKey, privateKey) here so they are
- * provably excluded — never diff a value that shouldn't be readable even in
- * an audit trail.
- */
-export const SENSITIVE_AUDIT_FIELDS = new Set<string>([
-  // Reserved for future write-only / secret fields (ref #59, #80):
-  // "apiKey", "privateKey", "secret",
-]);
+export const CURRENT_ACTIVITY_EVENT_SCHEMA_VERSION = 2;
 
 export type ActivityEvent = {
   id: string;
@@ -86,6 +72,9 @@ export type ActivityEvent = {
   description: string;
   entity?: ActivityEventEntity;
   metadata?: Record<string, any>;
-  /** Structured before/after diff for field-level audit. Optional for backward compatibility. */
-  changes?: ActivityChange[];
+  /**
+   * Explicit schema version for backward-compatible migration.
+   * Legacy events stored without this field are treated as version 1.
+   */
+  schemaVersion: number;
 };

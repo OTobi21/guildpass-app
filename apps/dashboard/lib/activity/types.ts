@@ -7,7 +7,13 @@ export type {
   ActivityChange,
 } from "@guildpass/integration-client";
 
-export { SENSITIVE_AUDIT_FIELDS } from "@guildpass/integration-client";
+export {
+  CURRENT_ACTIVITY_EVENT_SCHEMA_VERSION,
+  upcastActivityEvent,
+  upcastActivityEvents,
+  detectSchemaVersion,
+  type RawActivityEvent,
+} from "@guildpass/integration-client";
 
 /**
  * The canonical list of webhook event types the dashboard understands.

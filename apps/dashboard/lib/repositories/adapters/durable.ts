@@ -12,6 +12,9 @@ import type {
   IMemberRepository,
   IActivityRepository,
   ISettingsRepository,
+  MemberListQuery,
+  PaginatedResult,
+  PassListQuery,
 } from "../types";
 import type { Pass, Guild, Member } from "../../mock-data";
 import type { ActivityEvent } from "@/lib/activity/types";
@@ -89,6 +92,11 @@ export class DurablePassRepository extends DurableRepository implements IPassRep
     throw new Error("DurablePassRepository not yet implemented. Configure STORAGE_BACKEND in .env");
   }
 
+  async query(_options: PassListQuery = {}): Promise<PaginatedResult<Pass>> {
+    // Durable backends should push search/filter/pagination into indexed queries.
+    throw new Error("DurablePassRepository not yet implemented. Configure STORAGE_BACKEND in .env");
+  }
+
   async getById(_id: string): Promise<Pass | null> {
     throw new Error("DurablePassRepository not yet implemented");
   }
@@ -155,6 +163,11 @@ export class DurableMemberRepository extends DurableRepository implements IMembe
     throw new Error("DurableMemberRepository not yet implemented");
   }
 
+  async query(_options: MemberListQuery = {}): Promise<PaginatedResult<Member>> {
+    // Durable backends should push search/filter/pagination into indexed queries.
+    throw new Error("DurableMemberRepository not yet implemented");
+  }
+
   async getById(_id: string): Promise<Member | null> {
     throw new Error("DurableMemberRepository not yet implemented");
   }
@@ -191,7 +204,7 @@ export class DurableMemberRepository extends DurableRepository implements IMembe
  * - Keep raw JSON metadata for future schema evolution
  */
 export class DurableActivityRepository extends DurableRepository implements IActivityRepository {
-  async append(_event: Omit<ActivityEvent, "id" | "timestamp">): Promise<ActivityEvent> {
+  async append(_event: Omit<ActivityEvent, "id" | "timestamp"> & Partial<Pick<ActivityEvent, "schemaVersion">>): Promise<ActivityEvent> {
     throw new Error("DurableActivityRepository not yet implemented");
   }
 

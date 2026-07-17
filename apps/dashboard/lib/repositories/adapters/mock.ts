@@ -10,13 +10,17 @@ import type {
   IMemberRepository,
   IActivityRepository,
   ISettingsRepository,
+  MemberListQuery,
+  PaginatedResult,
+  PassListQuery,
 } from "../types";
 import type { Pass, Guild, Member } from "../../mock-data";
 import type { ActivityEvent } from "@/lib/activity/types";
+import { CURRENT_ACTIVITY_EVENT_SCHEMA_VERSION } from "@guildpass/integration-client";
 import type { DashboardSettings } from "../../settings";
 import { mockPasses, mockGuilds, mockMembers } from "../../mock-data";
 import { DEFAULT_SETTINGS } from "../../settings";
-import { computeDiff } from "@/lib/activity/diff";
+import { filterMembers, filterPasses, paginateItems } from "@/lib/pagination";
 
 /**
  * Mock pass repository: in-memory storage.
@@ -33,6 +37,11 @@ export class MockPassRepository implements IPassRepository {
 
   async getAll(): Promise<Pass[]> {
     return Array.from(this.passes.values());
+  }
+
+  async query(options: PassListQuery = {}): Promise<PaginatedResult<Pass>> {
+    const filtered = filterPasses(await this.getAll(), options);
+    return paginateItems(filtered, options);
   }
 
   async getById(id: string): Promise<Pass | null> {
@@ -203,6 +212,11 @@ export class MockMemberRepository implements IMemberRepository {
     return Array.from(this.members.values());
   }
 
+  async query(options: MemberListQuery = {}): Promise<PaginatedResult<Member>> {
+    const filtered = filterMembers(await this.getAll(), options);
+    return paginateItems(filtered, options);
+  }
+
   async getById(id: string): Promise<Member | null> {
     return this.members.get(id) ?? null;
   }
@@ -291,11 +305,12 @@ export class MockActivityRepository implements IActivityRepository {
   private events: ActivityEvent[] = [];
   private processedIds: Set<string> = new Set();
 
-  async append(event: Omit<ActivityEvent, "id" | "timestamp">): Promise<ActivityEvent> {
+  async append(event: Omit<ActivityEvent, "id" | "timestamp"> & Partial<Pick<ActivityEvent, "schemaVersion">>): Promise<ActivityEvent> {
     const fullEvent: ActivityEvent = {
       ...event,
       id: `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date().toISOString(),
+      schemaVersion: event.schemaVersion ?? CURRENT_ACTIVITY_EVENT_SCHEMA_VERSION,
     };
     this.events.unshift(fullEvent);
     this.processedIds.add(fullEvent.id);
