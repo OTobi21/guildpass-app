@@ -1,72 +1,73 @@
 import {
   createPublicClient,
-  http,
-  decodeEventLog,
-  type Address,
-  type PublicClient,
-  type Log,
+http,
+decodeEventLog,
+type Address,
+type PublicClient,
+type Log,
 } from "viem";
 import { mainnet } from "viem/chains";
 import { PrismaClient } from "@prisma/client";
 import { MEMBERSHIP_ABI, MEMBERSHIP_EVENTS } from "@guildpass/contracts";
+import { indexerLagBlocks, indexerPollCount } from "@guildpass/metrics";
 
 export interface IndexerConfig {
-  rpcUrl: string;
-  contractAddresses: Address[];
-  confirmationDepth: number;
-  startBlock: bigint;
+rpcUrl: string;
+contractAddresses: Address[];
+confirmationDepth: number;
+startBlock: bigint;
 }
 
 // ─── Types shared between the live indexer and the backfill CLI ───────────────
 
 /** Lightweight summary of one applied event, used by dry-run mode. */
 export interface ProcessedLogSummary {
-  transactionHash: string;
-  logIndex: number;
-  blockNumber: bigint;
-  blockHash: string;
-  eventType: string;
-  args: Record<string, unknown>;
-  /** Whether the record already exists (idempotent re-application). */
-  alreadyProcessed: boolean;
+transactionHash: string;
+logIndex: number;
+blockNumber: bigint;
+blockHash: string;
+eventType: string;
+args: Record<string, unknown>;
+/** Whether the record already exists (idempotent re-application). */
+alreadyProcessed: boolean;
 }
 
 /** Options passed to the shared processRange() method. */
 export interface ProcessRangeOptions {
-  contractAddress: Address;
-  fromBlock: bigint;
-  toBlock: bigint;
-  /**
-   * When true, the method collects and returns what would change without
-   * writing anything to the database.
-   */
-  dryRun?: boolean;
+contractAddress: Address;
+fromBlock: bigint;
+toBlock: bigint;
+/**
+* When true, the method collects and returns what would change without
+* writing anything to the database.
+*/
+dryRun?: boolean;
 }
 
 /** Result returned by processRange(). */
 export interface ProcessRangeResult {
-  fromBlock: bigint;
-  toBlock: bigint;
-  logsFound: number;
-  logsApplied: number;
-  logsSkipped: number;
-  dryRun: boolean;
-  /** Populated only in dry-run mode – one entry per log that would be applied. */
-  preview: ProcessedLogSummary[];
+fromBlock: bigint;
+toBlock: bigint;
+logsFound: number;
+logsApplied: number;
+logsSkipped: number;
+dryRun: boolean;
+/** Populated only in dry-run mode – one entry per log that would be applied. */
+preview: ProcessedLogSummary[];
 }
 
 // ─── Core: reusable processing engine ─────────────────────────────────────────
 
 /**
- * IndexerCore owns the stateless event-processing logic so it can be called
- * by both the continuous live indexer (poll loop) and the one-shot backfill CLI.
- */
+* IndexerCore owns the stateless event-processing logic so it can be called
+* by both the continuous live indexer (poll loop) and the one-shot backfill CLI.
+*/
 export class IndexerCore {
-  private client: PublicClient;
-  protected config: IndexerConfig;
-  protected db: PrismaClient;
+private client: PublicClient;
+protected config: IndexerConfig;
+protected db: PrismaClient;
 
-  constructor(config: IndexerConfig, db?: PrismaClient) {
+constructor(config: IndexerConfig, db?: PrismaClient) {
     this.config = config;
     this.db = db ?? new PrismaClient();
     this.client = createPublicClient({
@@ -331,6 +332,11 @@ export class MembershipIndexer extends IndexerCore {
         where: { contractAddress },
       });
 
+      // Metric: Update Lag
+      const lastBlock = lastCheckpoint ? lastCheckpoint.lastBlock : this.config.startBlock;
+      const lag = safeTip > lastBlock ? safeTip - lastBlock : 0n;
+      indexerLagBlocks.set({ contract: contractAddress }, Number(lag));
+
       let fromBlock = lastCheckpoint ? lastCheckpoint.lastBlock + 1n : this.config.startBlock;
 
       await this.checkReorg(contractAddress, fromBlock);
@@ -347,13 +353,22 @@ export class MembershipIndexer extends IndexerCore {
         `[${contractAddress}] Indexing from ${fromBlock} to ${toBlock}`,
       );
 
-      await this.processRange({ contractAddress, fromBlock, toBlock, dryRun: false });
+      try {
+        await this.processRange({ contractAddress, fromBlock, toBlock, dryRun: false });
 
-      await this.db.indexerCheckpoint.upsert({
-        where: { contractAddress },
-        update: { lastBlock: toBlock },
-        create: { contractAddress, lastBlock: toBlock },
-      });
+        // Metric: Success
+        indexerPollCount.inc({ contract: contractAddress, status: 'success' });
+
+        await this.db.indexerCheckpoint.upsert({
+          where: { contractAddress },
+          update: { lastBlock: toBlock },
+          create: { contractAddress, lastBlock: toBlock },
+        });
+      } catch (error) {
+        // Metric: Error
+        indexerPollCount.inc({ contract: contractAddress, status: 'error' });
+        throw error;
+      }
     }
   }
 
@@ -384,4 +399,3 @@ export class MembershipIndexer extends IndexerCore {
     }
   }
 }
-
