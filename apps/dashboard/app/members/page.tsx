@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import DashboardLayout from "@/components/DashboardLayout";
 import EmptyState from "@/components/EmptyState";
@@ -238,46 +238,65 @@ export default function MembersPage() {
       </div>
 
       {listState !== "unsupported" && (
-        <div className="mb-4 grid gap-3 lg:grid-cols-[1fr_180px_180px]">
-          <label className="block">
-            <span className="sr-only">Search members</span>
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search by name or wallet"
-              className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
-            />
-          </label>
+        <div className="mb-4 space-y-3">
+          {/* Search + Status row */}
+          <div className="grid gap-3 lg:grid-cols-[1fr_180px]">
+            <label className="block">
+              <span className="sr-only">Search members</span>
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search by name or wallet"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              />
+            </label>
 
-          <label className="block">
-            <span className="sr-only">Filter by status</span>
-            <select
-              value={status}
-              onChange={(event) => setStatus(event.target.value as MemberStatusFilter)}
-              className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
-            >
-              <option value="all">All statuses</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="pending">Pending</option>
-            </select>
-          </label>
+            <label className="block">
+              <span className="sr-only">Filter by status</span>
+              <select
+                value={status}
+                onChange={(event) => setStatus(event.target.value as MemberStatusFilter)}
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              >
+                <option value="all">All statuses</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="pending">Pending</option>
+              </select>
+            </label>
+          </div>
 
-          <label className="block">
-            <span className="sr-only">Filter by role</span>
-            <select
-              value={role}
-              onChange={(event) => setRole(event.target.value as MemberRoleFilter)}
-              className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+          {/* Role filter chips */}
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by role">
+            <span className="text-sm text-slate-500">Role:</span>
+            <button
+              type="button"
+              onClick={() => setRole("all")}
+              aria-pressed={role === "all"}
+              className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 ${
+                role === "all"
+                  ? "bg-violet-600 text-white border-violet-600"
+                  : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+              }`}
             >
-              <option value="all">All roles</option>
-              {MEMBER_ROLES.map((memberRole) => (
-                <option key={memberRole} value={memberRole}>
-                  {memberRole}
-                </option>
-              ))}
-            </select>
-          </label>
+              All
+            </button>
+            {MEMBER_ROLES.map((memberRole) => (
+              <button
+                key={memberRole}
+                type="button"
+                onClick={() => setRole(memberRole)}
+                aria-pressed={role === memberRole}
+                className={`rounded-full border px-3 py-1.5 text-sm font-medium capitalize transition-colors focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 ${
+                  role === memberRole
+                    ? "bg-violet-600 text-white border-violet-600"
+                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                {memberRole}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
