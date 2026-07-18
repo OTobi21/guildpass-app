@@ -47,7 +47,23 @@ import type {
 import type { Pass, Guild, Member } from "../../mock-data";
 import type { ActivityEvent } from "@/lib/activity/types";
 import type { DashboardSettings } from "../../settings";
+import { DEFAULT_SETTINGS } from "../../settings";
+import { validateSettingsPatch, type FieldError } from "@/lib/validation/settings";
 import { computeDiff } from "@/lib/activity/diff";
+
+/**
+ * Thrown when a settings write is rejected by repository-boundary validation.
+ * Carries the same field-level error shape the API route surfaces, so a caller
+ * can translate it into a 400 response without re-validating.
+ */
+export class SettingsValidationError extends Error {
+  readonly errors: FieldError[];
+  constructor(errors: FieldError[]) {
+    super("Settings validation failed at the repository boundary.");
+    this.name = "SettingsValidationError";
+    this.errors = errors;
+  }
+}
 
 /**
  * Minimal FIFO async mutex. Serializes async critical sections so that
@@ -399,14 +415,81 @@ export class DurableActivityRepository extends DurableRepository implements IAct
 /**
  * Durable settings repository.
  *
- * Backend implementations MUST:
- * - Persist the single settings document per workspace
- * - Never store secret values in this public settings model
+ * Persists the single workspace settings document in a shared in-memory store,
+ * seeded from DEFAULT_SETTINGS, and serializes updates through a FIFO async
+ * mutex so concurrent patches cannot interleave into a half-applied document.
+ *
+ * ── Repository-boundary validation (issue #139) ──────────────────────────────
+ * Every update is validated with validateSettingsPatch BEFORE it touches the
+ * store — the same validator the PATCH /api/settings route uses. Enforcing it
+ * here, not only in the route, means any caller (a future job, a different
+ * transport, a direct repository consumer) gets the same guarantees. Invalid
+ * patches throw SettingsValidationError carrying field-level errors; the store
+ * is left untouched. Only the validator's sanitized `value` is merged, so
+ * unknown / passthrough keys from the raw input never reach the persisted
+ * document.
+ *
+ * ── Secret-field extension point ─────────────────────────────────────────────
+ * DashboardSettings holds PUBLIC settings only (see lib/settings.ts). Secret
+ * values (e.g. an API key) must NOT be added to that model. When a secret is
+ * introduced later it belongs in a SEPARATE, write-only store — see the
+ * `writeSecret` seam below, which is intentionally left unimplemented so the
+ * schema decision (public document here, secrets elsewhere and write-only) is
+ * explicit rather than accidental. A production backend should back this with a
+ * distinct table/column that is never returned by `get`.
  */
 export class DurableSettingsRepository extends DurableRepository implements ISettingsRepository {
+  private settings: DashboardSettings = { ...DEFAULT_SETTINGS };
+  private readonly writeLock = new AsyncMutex();
+
   async get(): Promise<DashboardSettings> {
-    throw new Error("DurableSettingsRepository not yet implemented. Configure STORAGE_BACKEND in .env");
+    // Return a copy so callers cannot mutate the stored document by reference.
+    return { ...this.settings };
   }
+
+  async update(patch: Partial<DashboardSettings>): Promise<DashboardSettings> {
+    return this.writeLock.runExclusive(async () => {
+      // Validate at the repository boundary using the shared validator. This is
+      // the same check the API route runs, so the guarantee holds for every
+      // caller, not just HTTP requests.
+      const result = validateSettingsPatch(patch);
+      if (!result.ok) {
+        throw new SettingsValidationError(result.errors);
+      }
+
+      const previous = { ...this.settings };
+      // Merge only the validator's sanitized value — never the raw input.
+      this.settings = { ...this.settings, ...result.value };
+
+      await this.recordDiff(
+        previous as unknown as Record<string, unknown>,
+        this.settings as unknown as Record<string, unknown>,
+        "guild.updated",
+        `Settings updated: ${Object.keys(result.value).join(", ")}`,
+        "guild",
+        "settings",
+        this.settings.workspaceName,
+      );
+
+      return { ...this.settings };
+    });
+  }
+
+  /**
+   * Extension seam for future write-only secret fields (issue #139 acceptance
+   * criterion 3). Secrets are deliberately NOT part of DashboardSettings and
+   * must never be readable via `get`. A production backend should implement this
+   * against a separate, write-only store (e.g. an encrypted column or a secrets
+   * manager) and expose no corresponding read method here.
+   *
+   * Left unimplemented on purpose: it documents where secrets go without
+   * inventing a store the project has not yet chosen.
+   */
+  protected async writeSecret(_key: string, _value: string): Promise<void> {
+    throw new Error(
+      "Write-only secret storage is not implemented. Add a dedicated, " +
+        "server-side, write-only store before persisting secret settings.",
+    );
   async update(_patch: Partial<DashboardSettings>): Promise<DashboardSettings> {
     // TODO: Within transaction — read current, apply patch, call
     // this.recordDiff(previous, updated, "guild.updated", desc, "guild", "settings", name),
