@@ -55,6 +55,7 @@ export async function GET(request: Request): Promise<NextResponse> {
             roles: m.roles ?? [],
             joinedAt: m.updatedAt,
             lastActive: m.updatedAt,
+            version: 1,
           };
           return apiResponse([mapped]);
         }
@@ -71,6 +72,7 @@ export async function GET(request: Request): Promise<NextResponse> {
             roles: m.roles ?? [],
             joinedAt: m.updatedAt,
             lastActive: m.updatedAt,
+            version: 1,
           };
           return apiResponse([mapped]);
         }
@@ -182,8 +184,12 @@ export async function PATCH(request: Request): Promise<NextResponse> {
 
     const memberRepository = getMemberRepository();
     const guildId = getActiveGuildId();
+    const expectedVersion =
+      typeof (body as Record<string, unknown>).version === "number"
+        ? (body as Record<string, unknown>).version as number
+        : undefined;
     const existing = validation.data.roles ? await memberRepository.getById(guildId, id) : null;
-    const updated = await memberRepository.update(guildId, id, validation.data);
+    const updated = await memberRepository.update(guildId, id, validation.data, expectedVersion);
     if (!updated) throw new NotFoundError("Member not found.");
     const rolesChanged = existing && validation.data.roles && JSON.stringify(existing.roles) !== JSON.stringify(validation.data.roles);
     if (rolesChanged) {

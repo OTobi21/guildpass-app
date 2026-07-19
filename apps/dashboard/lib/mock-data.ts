@@ -34,6 +34,8 @@ export interface Member {
   roles: string[];
   joinedAt: string;
   lastActive: string;
+  /** Monotonically increasing version number for optimistic concurrency control. */
+  version: number;
 }
 
 export interface Activity {
@@ -66,10 +68,10 @@ export const mockGuilds: Guild[] = [
 ];
 
 export const mockMembers: Member[] = [
-  { id: "1", guildId: DEFAULT_GUILD_ID, wallet: "0x742d35Cc6634C0532925a3b8879539d43374e290", name: "Alice", status: "active", roles: ["admin", "member"], joinedAt: "2024-12-01T00:00:00Z", lastActive: "2025-06-10T12:34:56Z" },
-  { id: "2", guildId: DEFAULT_GUILD_ID, wallet: "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1", name: "Bob", status: "active", roles: ["member", "contributor"], joinedAt: "2025-01-05T00:00:00Z", lastActive: "2025-06-11T08:23:45Z" },
-  { id: "3", guildId: DEFAULT_GUILD_ID, wallet: "0xFFcf8Ff64036412b493244b40b914f562419246F", name: "Charlie", status: "pending", roles: [], joinedAt: "2025-06-12T00:00:00Z", lastActive: "2025-06-12T09:15:22Z" },
-  { id: "4", guildId: DEFAULT_GUILD_ID, wallet: "0x1234567890123456789012345678901234567890", name: "Diana", status: "inactive", roles: ["member"], joinedAt: "2025-02-14T00:00:00Z", lastActive: "2025-04-20T14:30:00Z" },
+  { id: "1", guildId: DEFAULT_GUILD_ID, wallet: "0x742d35Cc6634C0532925a3b8879539d43374e290", name: "Alice", status: "active", roles: ["admin", "member"], joinedAt: "2024-12-01T00:00:00Z", lastActive: "2025-06-10T12:34:56Z", version: 1 },
+  { id: "2", guildId: DEFAULT_GUILD_ID, wallet: "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1", name: "Bob", status: "active", roles: ["member", "contributor"], joinedAt: "2025-01-05T00:00:00Z", lastActive: "2025-06-11T08:23:45Z", version: 1 },
+  { id: "3", guildId: DEFAULT_GUILD_ID, wallet: "0xFFcf8Ff64036412b493244b40b914f562419246F", name: "Charlie", status: "pending", roles: [], joinedAt: "2025-06-12T00:00:00Z", lastActive: "2025-06-12T09:15:22Z", version: 1 },
+  { id: "4", guildId: DEFAULT_GUILD_ID, wallet: "0x1234567890123456789012345678901234567890", name: "Diana", status: "inactive", roles: ["member"], joinedAt: "2025-02-14T00:00:00Z", lastActive: "2025-04-20T14:30:00Z", version: 1 },
 ];
 
 export const mockActivity: Activity[] = [
