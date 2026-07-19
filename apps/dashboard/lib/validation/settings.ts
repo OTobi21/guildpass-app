@@ -75,8 +75,8 @@ export function validateSettingsPatch(input: unknown): SettingsValidationResult 
     return { ok: false, errors: mapZodErrors(result.error.issues) };
   }
 
-  const patch = result.data as Partial<DashboardSettings>;
-  const supportedKeys = ["workspaceName", "displayName", "timezone", "email"];
+  const patch = result.data as SettingsPatchPayload;
+  const supportedKeys = ["workspaceName", "displayName", "timezone", "email", "webhookForwardingSecret"];
   const providedSupportedFields = supportedKeys.filter((key) =>
     Object.prototype.hasOwnProperty.call(input, key)
   );
