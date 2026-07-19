@@ -1,24 +1,24 @@
 import { NextResponse } from "next/server";
 import {
-  apiError,
-  apiResponse,
-  apiUnsupported,
-  apiValidationError,
-  handleApiError,
+apiError,
+apiResponse,
+apiUnsupported,
+apiValidationError,
+handleApiError,
 } from "@/lib/api-helpers";
 import { NotFoundError } from "@/lib/api-errors";
 import { mockMembers, type Member } from "@/lib/mock-data";
 import { getActiveGuildId } from "@/lib/guild-context";
 import { requireSessionAndPermission } from "@/lib/auth/require-permission";
 import { IntegrationClient } from "@guildpass/integration-client";
-import { getEnv, getApiMode } from "@/lib/env";
+import { validateLiveModeEnv, getApiMode } from "@/lib/env";
 import { getMemberRepository } from "@/lib/repositories/factory";
 import { filterMembers, paginateItems, parseListLimit, parseListPage } from "@/lib/pagination";
 import type { MemberListQuery } from "@/lib/repositories/types";
 import {
-  malformedPayloadError,
-  validateMemberCreatePayload,
-  validateMemberUpdatePayload,
+malformedPayloadError,
+validateMemberCreatePayload,
+validateMemberUpdatePayload,
 } from "@/lib/validation/mutations";
 import { recordDashboardActivity } from "@/lib/activity/dashboard";
 import { isMemberRole } from "@/lib/member-roles";
@@ -34,13 +34,17 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     if (apiMode === "live") {
       const testClient = (globalThis as any).__TEST_INTEGRATION_CLIENT;
-      const env = testClient ? null : getEnv();
-      const client =
-        testClient ??
-        new IntegrationClient({
-          baseUrl: env!.GUILD_PASS_CORE_URL as string,
-          apiKey: env!.GUILD_PASS_CORE_API_KEY,
+      let client;
+
+      if (testClient) {
+        client = testClient;
+      } else {
+        const liveEnv = validateLiveModeEnv();
+        client = new IntegrationClient({
+          baseUrl: liveEnv.GUILD_PASS_CORE_URL,
+          apiKey: liveEnv.GUILD_PASS_CORE_API_KEY,
         });
+      }
 
       try {
         if (wallet) {
